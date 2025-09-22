@@ -105,9 +105,8 @@ class _ChatInputState extends State<ChatInput> {
                         ? "Type a message..."
                         : "Chat disabled",
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(
-                      0.3,
-                    ),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,

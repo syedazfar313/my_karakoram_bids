@@ -23,11 +23,11 @@ class NetworkException extends AppException {
 }
 
 class AuthException extends AppException {
-  AuthException(String message) : super(message);
+  AuthException(super.message);
 }
 
 class ValidationException extends AppException {
-  ValidationException(String message) : super(message);
+  ValidationException(super.message);
 }
 
 class ServerException extends AppException {
@@ -36,11 +36,11 @@ class ServerException extends AppException {
 }
 
 class FileException extends AppException {
-  FileException(String message) : super(message);
+  FileException(super.message);
 }
 
 class PermissionException extends AppException {
-  PermissionException(String message) : super(message);
+  PermissionException(super.message);
 }
 
 // Error Handler Utility
