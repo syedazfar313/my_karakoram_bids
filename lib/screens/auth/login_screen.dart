@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    // Clear any previous errors
     Provider.of<AuthProvider>(context, listen: false).clearError();
 
     if (!_formKey.currentState!.validate()) {
@@ -44,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted && authProvider.isAuthenticated) {
         final user = authProvider.user!;
 
-        // Navigate based on user role
         if (user.role == UserRole.client) {
           Navigator.pushReplacementNamed(
             context,
@@ -60,8 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      // Error is already handled by AuthProvider and shown via Consumer
-      // Additional error handling can be added here if needed
+      // Error is already handled by AuthProvider
     }
   }
 
@@ -72,11 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     value = value.trim();
 
-    // Check if it's email or phone
     if (value.contains('@')) {
       return ValidationUtils.validateEmail(value);
     } else {
-      // Treat as phone number
       return ValidationUtils.validatePhone(value);
     }
   }
@@ -84,27 +79,27 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Scaffold(
-          backgroundColor: const Color(0xFF2196F3),
+          backgroundColor: theme.colorScheme.primary, // Theme se blue color
           body: SafeArea(
             child: SingleChildScrollView(
               child: SizedBox(
                 height: size.height,
                 child: Column(
                   children: [
-                    // Blue top area
+                    // Blue top area - Theme color use kar rahe hain
                     Container(
                       height: size.height * 0.35,
                       width: double.infinity,
-                      color: const Color(0xFF2196F3),
+                      color: theme.colorScheme.primary,
                       alignment: Alignment.center,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // App logo or icon
                           const Icon(
                             Icons.home_work,
                             size: 80,
@@ -113,26 +108,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 16),
                           Text(
                             "Welcome Back",
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             "Sign in to continue to Karakoram Bids",
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withOpacity(0.9),
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
 
-                    // White curved area
+                    // White curved area - Background preserved
                     Expanded(
                       child: Container(
                         width: double.infinity,
@@ -141,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           vertical: 32,
                         ),
                         decoration: const BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.white, // White background preserved
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(40),
                             topRight: Radius.circular(40),
@@ -152,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Show error message if any
+                              // Error message
                               if (authProvider.errorMessage != null)
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 16),
@@ -185,29 +178,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
 
-                              // Email or Phone Field
+                              // Email or Phone Field - Theme colors applied
                               TextFormField(
                                 controller: identifierCtrl,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: "Email or Phone",
                                   prefixIcon: Icon(
                                     Icons.person_outline,
-                                    color: Colors.blue,
+                                    color: theme.colorScheme.primary,
                                   ),
                                   enabledBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(
-                                      color: Colors.blueAccent,
+                                      color: theme.colorScheme.primary,
                                     ),
                                   ),
                                   focusedBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.blue),
+                                    borderSide: BorderSide(
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                                 validator: _validateIdentifier,
                                 onChanged: (value) {
-                                  // Clear error when user starts typing
                                   if (authProvider.errorMessage != null) {
                                     authProvider.clearError();
                                   }
@@ -215,41 +209,42 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Password Field
+                              // Password Field - Theme colors applied
                               TextFormField(
                                 controller: passCtrl,
                                 obscureText: obscurePass,
                                 textInputAction: TextInputAction.done,
                                 decoration: InputDecoration(
                                   hintText: "Password",
-                                  prefixIcon: const Icon(
+                                  prefixIcon: Icon(
                                     Icons.lock_outline,
-                                    color: Colors.blue,
+                                    color: theme.colorScheme.primary,
                                   ),
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       obscurePass
                                           ? Icons.visibility_off
                                           : Icons.visibility,
-                                      color: Colors.blue,
+                                      color: theme.colorScheme.primary,
                                     ),
                                     onPressed: () => setState(
                                       () => obscurePass = !obscurePass,
                                     ),
                                   ),
-                                  enabledBorder: const UnderlineInputBorder(
+                                  enabledBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(
-                                      color: Colors.blueAccent,
+                                      color: theme.colorScheme.primary,
                                     ),
                                   ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.blue),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                                 validator: ValidationUtils.validatePassword,
                                 onFieldSubmitted: (_) => _handleLogin(),
                                 onChanged: (value) {
-                                  // Clear error when user starts typing
                                   if (authProvider.errorMessage != null) {
                                     authProvider.clearError();
                                   }
@@ -268,20 +263,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                             AppRoutes.forget,
                                           );
                                         },
-                                  child: const Text(
+                                  child: Text(
                                     "Forgot password?",
-                                    style: TextStyle(color: Colors.blue),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 16),
 
-                              // Login Button with Loading State
+                              // Login Button - Theme colors applied
                               SizedBox(
                                 height: 48,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2196F3),
+                                    backgroundColor: theme.colorScheme.primary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -298,9 +295,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                             strokeWidth: 2,
                                           ),
                                         )
-                                      : Row(
+                                      : const Row(
                                           mainAxisSize: MainAxisSize.min,
-                                          children: const [
+                                          children: [
                                             Icon(Icons.login),
                                             SizedBox(width: 8),
                                             Text(
@@ -336,7 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       style: TextStyle(
                                         color: authProvider.isLoading
                                             ? Colors.grey
-                                            : Colors.blue,
+                                            : theme.colorScheme.primary,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -344,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ],
                               ),
 
-                              // Version info (optional)
+                              // Version info
                               const SizedBox(height: 20),
                               const Center(
                                 child: Text(

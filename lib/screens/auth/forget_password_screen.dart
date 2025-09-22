@@ -16,19 +16,20 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // White background preserved
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // 🔹 Header (Blue top)
+              // Header with theme blue color
               Container(
                 width: double.infinity,
                 height: size.height * 0.25,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: theme.colorScheme.primary, // Theme se blue color
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(40),
                     bottomRight: Radius.circular(40),
@@ -42,7 +43,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 ),
               ),
 
-              // 🔹 Form Section
+              // Form Section on white background
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
@@ -56,32 +57,41 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                       Text(
                         "Forgot Password",
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Enter your registered email or phone number and we’ll send you instructions to reset your password.",
+                        "Enter your registered email or phone number and we'll send you instructions to reset your password.",
                         textAlign: TextAlign.center,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black54,
+                        ),
                       ),
                       const SizedBox(height: 32),
 
-                      // Email or Phone
+                      // Email or Phone field with theme colors
                       TextFormField(
                         controller: identifierCtrl,
                         decoration: InputDecoration(
                           labelText: "Email or Phone",
                           filled: true,
-                          fillColor: Colors.white,
-                          prefixIcon: const Icon(Icons.person_outline),
+                          fillColor: Colors.white, // White background preserved
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: theme.colorScheme.primary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                         ),
                         validator: (val) => val == null || val.isEmpty
@@ -90,6 +100,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                       ),
                       const SizedBox(height: 24),
 
+                      // Send Reset Link button with theme colors
                       ElevatedButton(
                         onPressed: () async {
                           if (!_formKey.currentState!.validate()) return;
@@ -117,9 +128,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
+                          backgroundColor: theme.colorScheme.primary,
                           foregroundColor: Colors.white,
                         ),
                         child: loading
@@ -134,12 +143,17 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                             : const Text("Send Reset Link"),
                       ),
                       const SizedBox(height: 16),
+
+                      // Back to Login button with theme colors
                       TextButton(
                         onPressed: () => Navigator.pushReplacementNamed(
                           context,
                           AppRoutes.login,
                         ),
-                        child: const Text("Back to Login"),
+                        child: Text(
+                          "Back to Login",
+                          style: TextStyle(color: theme.colorScheme.primary),
+                        ),
                       ),
                     ],
                   ),

@@ -23,18 +23,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF2196F3), // Bright blue
+      backgroundColor: theme.colorScheme.primary, // Theme se blue color
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 🔹 Construction/house icon
-            const Icon(
-              Icons.home_work, // house construction related icon
-              size: 80,
-              color: Colors.white,
-            ),
+            // Construction/house icon
+            const Icon(Icons.home_work, size: 80, color: Colors.white),
             const SizedBox(height: 20),
             const Text(
               'Karakoram Bids',

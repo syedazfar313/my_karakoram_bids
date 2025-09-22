@@ -21,13 +21,32 @@ class _SignupScreenState extends State<SignupScreen> {
   bool loading = false;
   UserRole? selectedRole;
 
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+    required Color color,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: color),
+      border: const UnderlineInputBorder(),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: color.withOpacity(0.5), width: 1.5),
+      ),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: color, width: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF2196F3),
+      backgroundColor: theme.colorScheme.primary,
       body: SafeArea(
         child: SingleChildScrollView(
           child: SizedBox(
@@ -38,23 +57,22 @@ class _SignupScreenState extends State<SignupScreen> {
                 Container(
                   height: size.height * 0.30,
                   width: double.infinity,
-                  color: const Color(0xFF2196F3),
+                  color: theme.colorScheme.primary,
                   alignment: Alignment.center,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         "Create Account",
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         "Sign up to start bidding & hiring",
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white.withOpacity(0.9),
                         ),
                         textAlign: TextAlign.center,
@@ -83,15 +101,13 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Name
+                          // Name field
                           TextFormField(
                             controller: nameCtrl,
-                            decoration: const InputDecoration(
-                              hintText: "Full Name",
-                              prefixIcon: Icon(
-                                Icons.person_outline,
-                                color: Colors.blue,
-                              ),
+                            decoration: _inputDecoration(
+                              hint: "Full Name",
+                              icon: Icons.person_outline,
+                              color: theme.colorScheme.primary,
                             ),
                             validator: (v) => v == null || v.isEmpty
                                 ? "Enter your name"
@@ -102,12 +118,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           // Email or phone
                           TextFormField(
                             controller: emailCtrl,
-                            decoration: const InputDecoration(
-                              hintText: "Email or Phone",
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: Colors.blue,
-                              ),
+                            decoration: _inputDecoration(
+                              hint: "Email or Phone",
+                              icon: Icons.email_outlined,
+                              color: theme.colorScheme.primary,
                             ),
                             validator: (v) => v == null || v.isEmpty
                                 ? "Enter email or phone"
@@ -119,23 +133,24 @@ class _SignupScreenState extends State<SignupScreen> {
                           TextFormField(
                             controller: passCtrl,
                             obscureText: obscurePass,
-                            decoration: InputDecoration(
-                              hintText: "Password",
-                              prefixIcon: const Icon(
-                                Icons.lock_outline,
-                                color: Colors.blue,
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  obscurePass
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Colors.blue,
+                            decoration:
+                                _inputDecoration(
+                                  hint: "Password",
+                                  icon: Icons.lock_outline,
+                                  color: theme.colorScheme.primary,
+                                ).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      obscurePass
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                    onPressed: () => setState(
+                                      () => obscurePass = !obscurePass,
+                                    ),
+                                  ),
                                 ),
-                                onPressed: () =>
-                                    setState(() => obscurePass = !obscurePass),
-                              ),
-                            ),
                             validator: (v) => v == null || v.length < 6
                                 ? "Password must be at least 6 characters"
                                 : null,
@@ -144,13 +159,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
                           // Role dropdown
                           DropdownButtonFormField<UserRole>(
-                            initialValue: selectedRole,
-                            decoration: const InputDecoration(
-                              hintText: "Register as",
-                              prefixIcon: Icon(
-                                Icons.work_outline,
-                                color: Colors.blue,
-                              ),
+                            value: selectedRole,
+                            decoration: _inputDecoration(
+                              hint: "Register as",
+                              icon: Icons.work_outline,
+                              color: theme.colorScheme.primary,
                             ),
                             items: const [
                               DropdownMenuItem(
@@ -173,7 +186,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             height: 48,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF2196F3),
+                                backgroundColor: theme.colorScheme.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -193,7 +206,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                   );
 
                                   final user = auth.user!;
-                                  // Navigate to respective home with user object
                                   if (user.role == UserRole.client) {
                                     Navigator.pushReplacementNamed(
                                       context,
@@ -228,6 +240,30 @@ class _SignupScreenState extends State<SignupScreen> {
                                       ),
                                     ),
                             ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Back to Login button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text("Already have an account? "),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    AppRoutes.login,
+                                  );
+                                },
+                                child: Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

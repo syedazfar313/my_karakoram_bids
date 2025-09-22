@@ -9,6 +9,8 @@ class CustomDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.user;
@@ -16,8 +18,6 @@ class CustomDrawer extends StatelessWidget {
         if (user == null) {
           return const Drawer(child: Center(child: Text('User not found')));
         }
-
-        final _ = user.role.toString().contains('client');
 
         return Drawer(
           child: ListView(
@@ -36,13 +36,16 @@ class CustomDrawer extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade700, Colors.blue.shade400],
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.secondary,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
                 onDetailsPressed: () {
-                  Navigator.pop(context); // Close drawer first
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -62,10 +65,10 @@ class CustomDrawer extends StatelessWidget {
               ),
 
               ListTile(
-                leading: const Icon(Icons.edit),
+                leading: Icon(Icons.edit, color: theme.colorScheme.primary),
                 title: const Text("Edit Profile"),
                 onTap: () {
-                  Navigator.pop(context); // Close drawer
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -74,7 +77,7 @@ class CustomDrawer extends StatelessWidget {
               ),
 
               ListTile(
-                leading: const Icon(Icons.lock),
+                leading: Icon(Icons.lock, color: theme.colorScheme.primary),
                 title: const Text("Change Password"),
                 onTap: () {
                   Navigator.pop(context);
@@ -88,7 +91,7 @@ class CustomDrawer extends StatelessWidget {
               ),
 
               ListTile(
-                leading: const Icon(Icons.language),
+                leading: Icon(Icons.language, color: theme.colorScheme.primary),
                 title: const Text("Language"),
                 onTap: () {
                   Navigator.pop(context);
@@ -140,22 +143,34 @@ class CustomDrawer extends StatelessWidget {
               ),
 
               ListTile(
-                leading: const Icon(Icons.privacy_tip),
+                leading: Icon(
+                  Icons.privacy_tip,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text("Privacy Policy"),
                 onTap: () => Navigator.pop(context),
               ),
               ListTile(
-                leading: const Icon(Icons.description),
+                leading: Icon(
+                  Icons.description,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text("Terms & Conditions"),
                 onTap: () => Navigator.pop(context),
               ),
               ListTile(
-                leading: const Icon(Icons.help_outline),
+                leading: Icon(
+                  Icons.help_outline,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text("FAQs"),
                 onTap: () => Navigator.pop(context),
               ),
               ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: Icon(
+                  Icons.info_outline,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text("About Us"),
                 onTap: () {
                   Navigator.pop(context);
@@ -165,7 +180,10 @@ class CustomDrawer extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.contact_mail),
+                leading: Icon(
+                  Icons.contact_mail,
+                  color: theme.colorScheme.primary,
+                ),
                 title: const Text("Contact Us"),
                 onTap: () {
                   Navigator.pop(context);
@@ -178,7 +196,7 @@ class CustomDrawer extends StatelessWidget {
               const Divider(),
 
               ListTile(
-                leading: const Icon(Icons.logout),
+                leading: Icon(Icons.logout, color: theme.colorScheme.primary),
                 title: const Text("Logout"),
                 onTap: () {
                   authProvider.signOut();

@@ -23,19 +23,20 @@ class _DashboardShellState extends State<DashboardShell> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.titles[_selectedIndex]),
         centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: theme.colorScheme.primary, // Theme se blue color
         foregroundColor: Colors.white,
       ),
-      drawer: widget
-          .drawers[_selectedIndex], // Drawer only for current tab if exists
+      drawer: widget.drawers[_selectedIndex], // Drawer only for current tab
       body: IndexedStack(index: _selectedIndex, children: widget.pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
+        selectedItemColor: theme.colorScheme.primary, // Theme se blue color
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) => setState(() => _selectedIndex = index),
