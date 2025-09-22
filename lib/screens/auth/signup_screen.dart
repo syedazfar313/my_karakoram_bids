@@ -144,7 +144,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                           // Role dropdown
                           DropdownButtonFormField<UserRole>(
-                            value: selectedRole,
+                            initialValue: selectedRole,
                             decoration: const InputDecoration(
                               hintText: "Register as",
                               prefixIcon: Icon(
