@@ -16,12 +16,84 @@ class ClientHome extends StatefulWidget {
 }
 
 class _ClientHomeState extends State<ClientHome> {
-  final List<Map<String, dynamic>> projects = [];
+  // Projects list with some initial dummy data
+  final List<Map<String, dynamic>> projects = [
+    {
+      "title": "10 Marla House Construction",
+      "description":
+          "Full house construction including grey structure and finishing.",
+      "budget": "2,000,000",
+      "location": "Gilgit jutial",
+      "planImage": null,
+      "status": "active",
+      "createdAt": DateTime.now()
+          .subtract(const Duration(days: 2))
+          .toIso8601String(),
+      "bids": [
+        {
+          "contractorName": "Ahmed Builders",
+          "amount": "1,900,000",
+          "days": "120",
+          "comment": "We will use high-quality material with guaranteed work.",
+        },
+        {
+          "contractorName": "Khan Constructions",
+          "amount": "2,050,000",
+          "days": "110",
+          "comment": "Fast and reliable service with experienced team.",
+        },
+      ],
+    },
+    {
+      "title": "Boundary Wall Construction",
+      "description": "Build a 100ft long and 8ft high boundary wall.",
+      "budget": "500,000",
+      "location": "Islamabad",
+      "planImage": null,
+      "status": "completed",
+      "createdAt": DateTime.now()
+          .subtract(const Duration(days: 5))
+          .toIso8601String(),
+      "bids": [
+        {
+          "contractorName": "SafeBuild Pvt Ltd",
+          "amount": "480,000",
+          "days": "20",
+          "comment": "We will complete quickly with best quality bricks.",
+        },
+      ],
+    },
+  ];
 
   void _addProject(Map<String, dynamic> project) {
     setState(() {
-      projects.add(project);
+      // Add timestamp if not present
+      if (project['createdAt'] == null) {
+        project['createdAt'] = DateTime.now().toIso8601String();
+      }
+
+      // Add status if not present
+      if (project['status'] == null) {
+        project['status'] = 'active';
+      }
+
+      // Initialize bids if not present
+      if (project['bids'] == null) {
+        project['bids'] = <Map<String, dynamic>>[];
+      }
+
+      // Add project to beginning of list (newest first)
+      projects.insert(0, project);
     });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Project posted successfully!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -29,8 +101,8 @@ class _ClientHomeState extends State<ClientHome> {
     return DashboardShell(
       pages: [
         Scaffold(
-          drawer: const CustomDrawer(), // Updated - no user parameter needed
-          body: MyProjectsPage(projects: projects),
+          drawer: const CustomDrawer(),
+          body: MyProjectsPage(projects: projects), // Pass actual projects
         ),
         PostProjectScreen(onProjectPosted: _addProject),
         const MessagesListScreen(userType: "Client"),
@@ -50,7 +122,7 @@ class _ClientHomeState extends State<ClientHome> {
         ),
       ],
       titles: const ["My Projects", "Post Project", "Messages"],
-      drawers: const {0: CustomDrawer()}, // Updated - no user parameter needed
+      drawers: const {0: CustomDrawer()},
     );
   }
 }

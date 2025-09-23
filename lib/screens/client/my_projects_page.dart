@@ -15,55 +15,20 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
   List<Map<String, dynamic>> _filteredProjects = [];
   String _searchQuery = '';
 
-  static List<Map<String, dynamic>> dummyProjects = [
-    {
-      "title": "10 Marla House Construction",
-      "description":
-          "Full house construction including grey structure and finishing.",
-      "budget": "2,000,000",
-      "location": "Gilgit jutial",
-      "planImage": null,
-      "status": "active",
-      "bids": [
-        {
-          "contractorName": "Ahmed Builders",
-          "amount": "1,900,000",
-          "days": "120",
-          "comment": "We will use high-quality material with guaranteed work.",
-        },
-        {
-          "contractorName": "Khan Constructions",
-          "amount": "2,050,000",
-          "days": "110",
-          "comment": "Fast and reliable service with experienced team.",
-        },
-      ],
-    },
-    {
-      "title": "Boundary Wall Construction",
-      "description": "Build a 100ft long and 8ft high boundary wall.",
-      "budget": "500,000",
-      "location": "Islamabad",
-      "planImage": null,
-      "status": "completed",
-      "bids": [
-        {
-          "contractorName": "SafeBuild Pvt Ltd",
-          "amount": "480,000",
-          "days": "20",
-          "comment": "We will complete quickly with best quality bricks.",
-        },
-      ],
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
-    _filteredProjects = widget.projects.isEmpty
-        ? dummyProjects
-        : widget.projects;
+    _filteredProjects = widget.projects;
     _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void didUpdateWidget(MyProjectsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update filtered projects when parent projects list changes
+    if (oldWidget.projects != widget.projects) {
+      _filterProjects();
+    }
   }
 
   @override
@@ -80,18 +45,19 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
   }
 
   void _filterProjects() {
-    final dataToShow = widget.projects.isEmpty
-        ? dummyProjects
-        : widget.projects;
-
     if (_searchQuery.isEmpty) {
-      _filteredProjects = dataToShow;
+      setState(() {
+        _filteredProjects = widget.projects;
+      });
     } else {
       final query = _searchQuery.toLowerCase();
-      _filteredProjects = dataToShow.where((project) {
-        return (project['title']?.toLowerCase().contains(query) ?? false) ||
-            (project['location']?.toLowerCase().contains(query) ?? false);
-      }).toList();
+      setState(() {
+        _filteredProjects = widget.projects.where((project) {
+          return (project['title']?.toLowerCase().contains(query) ?? false) ||
+              (project['location']?.toLowerCase().contains(query) ?? false) ||
+              (project['description']?.toLowerCase().contains(query) ?? false);
+        }).toList();
+      });
     }
   }
 
@@ -99,7 +65,8 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
     // Simulate refresh delay
     await Future.delayed(const Duration(seconds: 1));
 
-    // Show success message
+    // In real app, you would fetch projects from server here
+    // For now, just show success message
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -178,9 +145,8 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Navigate to Post Project')),
-                  );
+                  // Switch to post project tab
+                  // This will be handled by parent widget (ClientHome)
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -190,12 +156,156 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
                     vertical: 12,
                   ),
                 ),
-                child: const Text('Post Project'),
+                child: const Text('Post Your First Project'),
               ),
             ],
           ),
         ),
       );
+    }
+  }
+
+  Widget _buildProjectCard(Map<String, dynamic> project, int index) {
+    final theme = Theme.of(context);
+
+    // Get status color
+    Color statusColor = Colors.green;
+    String statusText = project['status'] ?? 'active';
+    if (statusText == 'completed') {
+      statusColor = Colors.blue;
+    } else if (statusText == 'cancelled') {
+      statusColor = Colors.red;
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProjectDetailScreen(project: project),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title and Status
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      project['title'] ?? 'Untitled Project',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      statusText.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Description
+              Text(
+                project['description'] ?? 'No description',
+                style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+
+              // Location and Budget
+              Row(
+                children: [
+                  Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      project['location'] ?? 'Location not specified',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  ),
+                  if (project['budget'] != null && project['budget'].isNotEmpty)
+                    Text(
+                      'PKR ${project['budget']}',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Bids count and date
+              Row(
+                children: [
+                  Icon(Icons.local_offer, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${project['bids']?.length ?? 0} bid${(project['bids']?.length ?? 0) != 1 ? 's' : ''}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _formatDate(project['createdAt']),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'Recently';
+
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return 'Recently';
     }
   }
 
@@ -254,67 +364,10 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
             child: _filteredProjects.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.only(bottom: 16),
                     itemCount: _filteredProjects.length,
                     itemBuilder: (context, index) {
-                      final project = _filteredProjects[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                        child: ListTile(
-                          title: Text(
-                            project['title'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(project['description']),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    project['location'],
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                  const Spacer(),
-                                  if (project['budget'] != null)
-                                    Text(
-                                      'PKR ${project['budget']}',
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProjectDetailScreen(project: project),
-                              ),
-                            );
-                          },
-                        ),
-                      );
+                      return _buildProjectCard(_filteredProjects[index], index);
                     },
                   ),
           ),
