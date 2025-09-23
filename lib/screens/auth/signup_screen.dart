@@ -159,7 +159,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                           // Role dropdown
                           DropdownButtonFormField<UserRole>(
-                            value: selectedRole,
+                            initialValue: selectedRole,
                             decoration: _inputDecoration(
                               hint: "Register as",
                               icon: Icons.work_outline,
