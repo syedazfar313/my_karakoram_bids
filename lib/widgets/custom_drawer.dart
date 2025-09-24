@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../screens/common/change_password_screen.dart';
 import '../screens/common/profile_screen.dart';
+import '../screens/common/privacy_policy_screen.dart';
+import '../screens/common/faqs_screen.dart';
+import '../screens/common/about_us_screen.dart';
+import '../screens/common/contact_us_screen.dart';
 import '../providers/auth_provider.dart';
 
 class CustomDrawer extends StatelessWidget {
@@ -148,24 +152,32 @@ class CustomDrawer extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
                 title: const Text("Privacy Policy"),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PrivacyPolicyScreen(),
+                    ),
+                  );
+                },
               ),
-              ListTile(
-                leading: Icon(
-                  Icons.description,
-                  color: theme.colorScheme.primary,
-                ),
-                title: const Text("Terms & Conditions"),
-                onTap: () => Navigator.pop(context),
-              ),
+
               ListTile(
                 leading: Icon(
                   Icons.help_outline,
                   color: theme.colorScheme.primary,
                 ),
                 title: const Text("FAQs"),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FAQsScreen()),
+                  );
+                },
               ),
+
               ListTile(
                 leading: Icon(
                   Icons.info_outline,
@@ -174,11 +186,13 @@ class CustomDrawer extends StatelessWidget {
                 title: const Text("About Us"),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("About Us tapped")),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutUsScreen()),
                   );
                 },
               ),
+
               ListTile(
                 leading: Icon(
                   Icons.contact_mail,
@@ -187,8 +201,9 @@ class CustomDrawer extends StatelessWidget {
                 title: const Text("Contact Us"),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Contact Us tapped")),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ContactUsScreen()),
                   );
                 },
               ),
