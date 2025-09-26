@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user.dart';
 
 enum AuthState { loading, authenticated, unauthenticated }
 
 class AuthProvider with ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   UserModel? _user;
   AuthState _state = AuthState.unauthenticated;
   String? _errorMessage;
+  String? _verificationId; // For phone auth
 
   // Getters
   UserModel? get user => _user;
@@ -15,8 +19,22 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _state == AuthState.authenticated;
   bool get isLoading => _state == AuthState.loading;
 
-  // Mock database (replace with Firebase later)
-  final Map<String, Map<String, dynamic>> _usersDb = {};
+  // Constructor - Check current user
+  AuthProvider() {
+    _initAuthState();
+  }
+
+  void _initAuthState() {
+    _auth.authStateChanges().listen((User? firebaseUser) {
+      if (firebaseUser != null) {
+        _createUserFromFirebase(firebaseUser);
+        _setState(AuthState.authenticated);
+      } else {
+        _user = null;
+        _setState(AuthState.unauthenticated);
+      }
+    });
+  }
 
   void _setState(AuthState state) {
     _state = state;
@@ -28,7 +46,21 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Simple validation methods
+  void _createUserFromFirebase(User firebaseUser) {
+    _user = UserModel(
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName ?? 'User',
+      email: firebaseUser.email ?? firebaseUser.phoneNumber ?? '',
+      role: UserRole.client, // Default role, can be updated later
+      phone: firebaseUser.phoneNumber ?? '',
+      imageUrl: firebaseUser.photoURL ?? '',
+      experience: '',
+      completedProjects: [],
+      location: '',
+    );
+  }
+
+  // Validation methods (same as before)
   String? _validateName(String? name) {
     if (name == null || name.trim().isEmpty) {
       return 'Name is required';
@@ -69,10 +101,10 @@ class AuthProvider with ChangeNotifier {
     return null;
   }
 
-  Future<void> signUp({
+  // EMAIL/PASSWORD AUTHENTICATION
+  Future<void> signUpWithEmail({
     required String name,
-    String? email,
-    String? phone,
+    required String email,
     required String password,
     required UserRole role,
   }) async {
@@ -84,60 +116,32 @@ class AuthProvider with ChangeNotifier {
       final nameError = _validateName(name);
       if (nameError != null) throw Exception(nameError);
 
+      final emailError = _validateEmail(email);
+      if (emailError != null) throw Exception(emailError);
+
       final passwordError = _validatePassword(password);
       if (passwordError != null) throw Exception(passwordError);
 
-      if (email != null && email.isNotEmpty) {
-        final emailError = _validateEmail(email);
-        if (emailError != null) throw Exception(emailError);
-      } else if (phone != null && phone.isNotEmpty) {
-        final phoneError = _validatePhone(phone);
-        if (phoneError != null) throw Exception(phoneError);
-      } else {
-        throw Exception("Please provide either email or phone number");
-      }
-
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      final key = email?.isNotEmpty == true ? email! : phone!;
-
-      // Check if user already exists
-      if (_usersDb.containsKey(key)) {
-        throw Exception(
-          "User already exists with this ${email?.isNotEmpty == true ? 'email' : 'phone'}",
-        );
-      }
-
-      final userId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      _usersDb[key] = {
-        "id": userId,
-        "name": name,
-        "email": email ?? '',
-        "phone": phone ?? '',
-        "password": password,
-        "role": role.toString().split('.').last,
-        "imageUrl": '',
-        "experience": '',
-        "completedProjects": <String>[],
-        "location": '',
-        "createdAt": DateTime.now().toIso8601String(),
-      };
-
-      _user = UserModel(
-        id: userId,
-        name: name,
-        email: email ?? phone ?? '',
-        role: role,
-        phone: phone ?? '',
-        imageUrl: '',
-        experience: '',
-        completedProjects: [],
-        location: '',
+      // Create user with Firebase
+      final UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
+      // Update display name
+      await result.user?.updateDisplayName(name);
+
+      // Send email verification
+      await result.user?.sendEmailVerification();
+
+      _createUserFromFirebase(result.user!);
+      _user?.update(name: name); // Update name and role
       _setState(AuthState.authenticated);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getFirebaseErrorMessage(e);
+      _setError(errorMessage);
+      _setState(AuthState.unauthenticated);
+      throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
@@ -145,60 +149,32 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> signIn({
-    required String identifier,
+  Future<void> signInWithEmail({
+    required String email,
     required String password,
   }) async {
     try {
       _setState(AuthState.loading);
       _setError(null);
 
-      // Basic validation
-      if (identifier.trim().isEmpty) {
-        throw Exception("Please enter email or phone");
-      }
-      if (password.isEmpty) {
-        throw Exception("Please enter password");
-      }
+      final emailError = _validateEmail(email);
+      if (emailError != null) throw Exception(emailError);
 
-      await Future.delayed(const Duration(seconds: 1));
+      final passwordError = _validatePassword(password);
+      if (passwordError != null) throw Exception(passwordError);
 
-      // Find user
-      Map<String, dynamic>? userData;
-      for (var user in _usersDb.values) {
-        if (user["email"] == identifier || user["phone"] == identifier) {
-          userData = user;
-          break;
-        }
-      }
-
-      if (userData == null) {
-        throw Exception(
-          "No account found with this ${identifier.contains('@') ? 'email' : 'phone'}",
-        );
-      }
-
-      if (userData["password"] != password) {
-        throw Exception("Incorrect password");
-      }
-
-      _user = UserModel(
-        id: userData["id"] ?? '',
-        name: userData["name"] ?? '',
-        email: userData["email"] ?? userData["phone"] ?? '',
-        role: userData["role"] == 'contractor'
-            ? UserRole.contractor
-            : UserRole.client,
-        phone: userData["phone"] ?? '',
-        imageUrl: userData["imageUrl"] ?? '',
-        experience: userData["experience"] ?? '',
-        completedProjects: List<String>.from(
-          userData["completedProjects"] ?? [],
-        ),
-        location: userData["location"] ?? '',
+      final UserCredential result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
+      _createUserFromFirebase(result.user!);
       _setState(AuthState.authenticated);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getFirebaseErrorMessage(e);
+      _setError(errorMessage);
+      _setState(AuthState.unauthenticated);
+      throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
@@ -206,33 +182,43 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> resetPassword(String identifier) async {
+  // PHONE AUTHENTICATION
+  Future<void> sendPhoneVerification({required String phoneNumber}) async {
     try {
       _setState(AuthState.loading);
       _setError(null);
 
-      if (identifier.trim().isEmpty) {
-        throw Exception("Please enter email or phone");
-      }
+      final phoneError = _validatePhone(phoneNumber);
+      if (phoneError != null) throw Exception(phoneError);
 
-      await Future.delayed(const Duration(seconds: 2));
+      // Format phone number (add country code if not present)
+      String formattedPhone = phoneNumber.startsWith('+')
+          ? phoneNumber
+          : '+92$phoneNumber'; // Pakistan country code
 
-      bool userExists = false;
-      for (var user in _usersDb.values) {
-        if (user["email"] == identifier || user["phone"] == identifier) {
-          userExists = true;
-          break;
-        }
-      }
-
-      if (!userExists) {
-        throw Exception(
-          "No account found with this ${identifier.contains('@') ? 'email' : 'phone'}",
-        );
-      }
-
-      // In real app, send reset email/SMS here
-      _setState(AuthState.unauthenticated);
+      await _auth.verifyPhoneNumber(
+        phoneNumber: formattedPhone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto verification (on some Android devices)
+          final UserCredential result = await _auth.signInWithCredential(
+            credential,
+          );
+          _createUserFromFirebase(result.user!);
+          _setState(AuthState.authenticated);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          String errorMessage = _getFirebaseErrorMessage(e);
+          _setError(errorMessage);
+          _setState(AuthState.unauthenticated);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          _setState(AuthState.unauthenticated); // Wait for OTP input
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
@@ -240,7 +226,106 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Profile update method - MAIN SOLUTION FOR YOUR ISSUE
+  Future<void> verifyPhoneOTP({required String otp, String? name}) async {
+    try {
+      _setState(AuthState.loading);
+      _setError(null);
+
+      if (_verificationId == null) {
+        throw Exception("Verification ID not found. Please try again.");
+      }
+
+      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otp,
+      );
+
+      final UserCredential result = await _auth.signInWithCredential(
+        credential,
+      );
+
+      // Update display name if provided (for new users)
+      if (name != null && name.isNotEmpty) {
+        await result.user?.updateDisplayName(name);
+      }
+
+      _createUserFromFirebase(result.user!);
+      if (name != null) _user?.update(name: name);
+      _setState(AuthState.authenticated);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getFirebaseErrorMessage(e);
+      _setError(errorMessage);
+      _setState(AuthState.unauthenticated);
+      throw Exception(errorMessage);
+    } catch (e) {
+      _setError(e.toString());
+      _setState(AuthState.unauthenticated);
+      rethrow;
+    }
+  }
+
+  // PASSWORD RESET
+  Future<void> resetPassword(String email) async {
+    try {
+      _setState(AuthState.loading);
+      _setError(null);
+
+      final emailError = _validateEmail(email);
+      if (emailError != null) throw Exception(emailError);
+
+      await _auth.sendPasswordResetEmail(email: email);
+      _setState(AuthState.unauthenticated);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getFirebaseErrorMessage(e);
+      _setError(errorMessage);
+      _setState(AuthState.unauthenticated);
+      throw Exception(errorMessage);
+    } catch (e) {
+      _setError(e.toString());
+      _setState(AuthState.unauthenticated);
+      rethrow;
+    }
+  }
+
+  // COMBINED SIGN UP METHOD (for backward compatibility)
+  Future<void> signUp({
+    required String name,
+    String? email,
+    String? phone,
+    required String password,
+    required UserRole role,
+  }) async {
+    if (email != null && email.isNotEmpty) {
+      await signUpWithEmail(
+        name: name,
+        email: email,
+        password: password,
+        role: role,
+      );
+    } else if (phone != null && phone.isNotEmpty) {
+      // For phone signup, first send verification
+      await sendPhoneVerification(phoneNumber: phone);
+      // After this, user needs to call verifyPhoneOTP
+    } else {
+      throw Exception("Please provide either email or phone number");
+    }
+  }
+
+  // COMBINED SIGN IN METHOD (for backward compatibility)
+  Future<void> signIn({
+    required String identifier,
+    required String password,
+  }) async {
+    if (identifier.contains('@')) {
+      await signInWithEmail(email: identifier, password: password);
+    } else {
+      // For phone signin, send OTP first
+      await sendPhoneVerification(phoneNumber: identifier);
+      // After this, user needs to call verifyPhoneOTP
+    }
+  }
+
+  // PROFILE UPDATE
   void updateProfile({
     String? name,
     String? email,
@@ -249,10 +334,18 @@ class AuthProvider with ChangeNotifier {
     String? experience,
     List<String>? completedProjects,
     String? imageUrl,
-  }) {
+  }) async {
     if (_user == null) return;
 
-    // Update the user object
+    // Update Firebase user profile
+    if (name != null) {
+      await _auth.currentUser?.updateDisplayName(name);
+    }
+    if (imageUrl != null) {
+      await _auth.currentUser?.updatePhotoURL(imageUrl);
+    }
+
+    // Update local user object
     _user!.update(
       name: name,
       email: email,
@@ -263,30 +356,43 @@ class AuthProvider with ChangeNotifier {
       imageUrl: imageUrl,
     );
 
-    // Update mock database
-    final key = _user!.email;
-    if (_usersDb.containsKey(key)) {
-      _usersDb[key]!.addAll({
-        if (name != null) 'name': name,
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
-        if (location != null) 'location': location,
-        if (experience != null) 'experience': experience,
-        if (completedProjects != null) 'completedProjects': completedProjects,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-      });
-    }
-
-    notifyListeners(); // This will update all Consumer widgets
+    notifyListeners();
   }
 
-  void signOut() {
+  // SIGN OUT
+  Future<void> signOut() async {
+    await _auth.signOut();
     _user = null;
     _errorMessage = null;
+    _verificationId = null;
     _setState(AuthState.unauthenticated);
   }
 
   void clearError() {
     _setError(null);
+  }
+
+  // Helper method to convert Firebase errors to user-friendly messages
+  String _getFirebaseErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'weak-password':
+        return 'Password is too weak.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'invalid-phone-number':
+        return 'Invalid phone number.';
+      case 'invalid-verification-code':
+        return 'Invalid verification code.';
+      case 'session-expired':
+        return 'Verification session expired. Please try again.';
+      default:
+        return e.message ?? 'An error occurred';
+    }
   }
 }

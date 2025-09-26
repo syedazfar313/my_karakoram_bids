@@ -1,3 +1,8 @@
+plugins {
+    // ✅ Remove version to avoid conflict
+    id("com.google.gms.google-services") apply false
+}
+
 allprojects {
     repositories {
         google()

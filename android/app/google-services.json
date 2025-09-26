@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "136719517391",
+    "project_id": "karakoram-bids-d4352",
+    "storage_bucket": "karakoram-bids-d4352.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:136719517391:android:8d7c1c2785eabfc769d9ba",
+        "android_client_info": {
+          "package_name": "com.example.my_karakoram_bids"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIP5RXjJ0sYxZDSGPN0pARzfZGbMTVg60"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

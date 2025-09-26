@@ -63,28 +63,64 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+
+            // 🔥 Professional Gradient Place Bid Button
+            Container(
+              width: double.infinity,
+              height: 55,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF2196F3),
+                    Color(0xFF1565C0),
+                  ], // Blue gradient
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(2, 3),
+                  ),
+                ],
               ),
-              onPressed: () {
-                if (amountCtrl.text.isEmpty || daysCtrl.text.isEmpty) return;
-                widget.onBid({
-                  'project': p['title'],
-                  'amount': amountCtrl.text,
-                  'days': daysCtrl.text,
-                  'comment': commentCtrl.text,
-                  'status': 'Pending',
-                });
-                Navigator.pop(context);
-              },
-              child: const Text(
-                "Place Bid",
-                style: TextStyle(fontSize: 16, color: Colors.white),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent, // ✅ Gradient visible
+                  shadowColor: Colors.transparent, // ✅ No double shadow
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  if (amountCtrl.text.isEmpty || daysCtrl.text.isEmpty) return;
+                  widget.onBid({
+                    'project': p['title'],
+                    'amount': amountCtrl.text,
+                    'days': daysCtrl.text,
+                    'comment': commentCtrl.text,
+                    'status': 'Pending',
+                  });
+                  Navigator.pop(context);
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.gavel, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Place Bid",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../screens/common/change_password_screen.dart';
 import '../screens/common/profile_screen.dart';
 import '../screens/common/privacy_policy_screen.dart';
@@ -10,6 +11,31 @@ import '../providers/auth_provider.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
+
+  Widget _buildProfileImage(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return const CircleAvatar(child: Icon(Icons.person, size: 40));
+    }
+
+    // Check if it's a local file path or network URL
+    if (imageUrl.startsWith('/') || imageUrl.startsWith('file://')) {
+      // Local file
+      return CircleAvatar(
+        backgroundImage: FileImage(File(imageUrl)),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Error loading local image: $exception');
+        },
+      );
+    } else {
+      // Network URL
+      return CircleAvatar(
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Error loading network image: $exception');
+        },
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,14 +56,7 @@ class CustomDrawer extends StatelessWidget {
               UserAccountsDrawerHeader(
                 accountName: Text(user.name),
                 accountEmail: Text(user.email),
-                currentAccountPicture: CircleAvatar(
-                  backgroundImage: user.imageUrl.isNotEmpty
-                      ? NetworkImage(user.imageUrl)
-                      : null,
-                  child: user.imageUrl.isEmpty
-                      ? const Icon(Icons.person, size: 40)
-                      : null,
-                ),
+                currentAccountPicture: _buildProfileImage(user.imageUrl),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
