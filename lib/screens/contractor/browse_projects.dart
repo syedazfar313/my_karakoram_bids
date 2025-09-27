@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 class BrowseProjectsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> projects;
@@ -234,6 +235,203 @@ class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
     );
   }
 
+  Widget _buildProjectCard(Map<String, dynamic> project) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Project Image (Naksha) - NEW FEATURE
+          if (project['planImage'] != null)
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                child: Image.file(
+                  project['planImage'] as File,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.broken_image,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Image not available',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and Budget
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        project['title'] ?? 'Untitled Project',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (project['budget'] != null &&
+                        project['budget'].isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'PKR ${project['budget']}',
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Description
+                Text(
+                  project['description'] ?? 'No description',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: 12),
+
+                // Plan Image Indicator (if image exists) - NEW FEATURE
+                if (project['planImage'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.architecture,
+                          size: 14,
+                          color: Colors.blue[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Floor plan included',
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Location and Bid button
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        project['location'] ?? 'Location not specified',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _showBidDialog(project),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text('Bid Now'),
+                    ),
+                  ],
+                ),
+
+                // Date posted - NEW FEATURE
+                if (project['createdAt'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Posted ${_formatDate(project['createdAt'])}',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'recently';
+
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'today';
+      } else if (difference.inDays == 1) {
+        return 'yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return 'recently';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -293,104 +491,7 @@ class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
                     itemCount: _filteredProjects.length,
                     itemBuilder: (context, index) {
                       final project = _filteredProjects[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Title and Budget
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      project['title'] ?? 'Untitled Project',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  if (project['budget'] != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade100,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        project['budget'],
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              // Description
-                              Text(
-                                project['description'] ?? 'No description',
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontSize: 14,
-                                ),
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Location and Bid button
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      project['location'] ??
-                                          'Location not specified',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () => _showBidDialog(project),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                    ),
-                                    child: const Text('Bid Now'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _buildProjectCard(project);
                     },
                   ),
           ),
