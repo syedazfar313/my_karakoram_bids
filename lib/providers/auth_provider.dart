@@ -11,6 +11,7 @@ class AuthProvider with ChangeNotifier {
   AuthState _state = AuthState.unauthenticated;
   String? _errorMessage;
   String? _verificationId; // For phone auth
+  UserRole? _tempRole; // Temporary store role during signup
 
   // Getters
   UserModel? get user => _user;
@@ -46,18 +47,24 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _createUserFromFirebase(User firebaseUser) {
+  void _createUserFromFirebase(User firebaseUser, {UserRole? role}) {
     _user = UserModel(
       id: firebaseUser.uid,
       name: firebaseUser.displayName ?? 'User',
       email: firebaseUser.email ?? firebaseUser.phoneNumber ?? '',
-      role: UserRole.client, // Default role, can be updated later
+      role:
+          role ??
+          _tempRole ??
+          UserRole.client, // Use provided role or temp role
       phone: firebaseUser.phoneNumber ?? '',
       imageUrl: firebaseUser.photoURL ?? '',
       experience: '',
       completedProjects: [],
       location: '',
     );
+
+    // Clear temp role after use
+    _tempRole = null;
   }
 
   // Validation methods (same as before)
@@ -122,6 +129,9 @@ class AuthProvider with ChangeNotifier {
       final passwordError = _validatePassword(password);
       if (passwordError != null) throw Exception(passwordError);
 
+      // Store role temporarily
+      _tempRole = role;
+
       // Create user with Firebase
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -134,17 +144,27 @@ class AuthProvider with ChangeNotifier {
       // Send email verification
       await result.user?.sendEmailVerification();
 
-      _createUserFromFirebase(result.user!);
-      _user?.update(name: name); // Update name and role
+      // Create user with correct role
+      _createUserFromFirebase(result.user!, role: role);
+
+      // Update user with name and role
+      _user?.update(name: name);
+      // Manually set role since update method doesn't handle role
+      if (_user != null) {
+        _user!.role = role;
+      }
+
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
       _setError(errorMessage);
       _setState(AuthState.unauthenticated);
+      _tempRole = null; // Clear temp role on error
       throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
+      _tempRole = null; // Clear temp role on error
       rethrow;
     }
   }
@@ -183,13 +203,21 @@ class AuthProvider with ChangeNotifier {
   }
 
   // PHONE AUTHENTICATION
-  Future<void> sendPhoneVerification({required String phoneNumber}) async {
+  Future<void> sendPhoneVerification({
+    required String phoneNumber,
+    UserRole? role,
+  }) async {
     try {
       _setState(AuthState.loading);
       _setError(null);
 
       final phoneError = _validatePhone(phoneNumber);
       if (phoneError != null) throw Exception(phoneError);
+
+      // Store role for phone signup
+      if (role != null) {
+        _tempRole = role;
+      }
 
       // Format phone number (add country code if not present)
       String formattedPhone = phoneNumber.startsWith('+')
@@ -203,13 +231,14 @@ class AuthProvider with ChangeNotifier {
           final UserCredential result = await _auth.signInWithCredential(
             credential,
           );
-          _createUserFromFirebase(result.user!);
+          _createUserFromFirebase(result.user!, role: _tempRole);
           _setState(AuthState.authenticated);
         },
         verificationFailed: (FirebaseAuthException e) {
           String errorMessage = _getFirebaseErrorMessage(e);
           _setError(errorMessage);
           _setState(AuthState.unauthenticated);
+          _tempRole = null; // Clear temp role on error
         },
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
@@ -222,6 +251,7 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
+      _tempRole = null; // Clear temp role on error
       rethrow;
     }
   }
@@ -249,17 +279,24 @@ class AuthProvider with ChangeNotifier {
         await result.user?.updateDisplayName(name);
       }
 
-      _createUserFromFirebase(result.user!);
-      if (name != null) _user?.update(name: name);
+      // Create user with stored role
+      _createUserFromFirebase(result.user!, role: _tempRole);
+
+      if (name != null) {
+        _user?.update(name: name);
+      }
+
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
       _setError(errorMessage);
       _setState(AuthState.unauthenticated);
+      _tempRole = null; // Clear temp role on error
       throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
+      _tempRole = null; // Clear temp role on error
       rethrow;
     }
   }
@@ -303,8 +340,8 @@ class AuthProvider with ChangeNotifier {
         role: role,
       );
     } else if (phone != null && phone.isNotEmpty) {
-      // For phone signup, first send verification
-      await sendPhoneVerification(phoneNumber: phone);
+      // For phone signup, send verification with role
+      await sendPhoneVerification(phoneNumber: phone, role: role);
       // After this, user needs to call verifyPhoneOTP
     } else {
       throw Exception("Please provide either email or phone number");
@@ -319,7 +356,7 @@ class AuthProvider with ChangeNotifier {
     if (identifier.contains('@')) {
       await signInWithEmail(email: identifier, password: password);
     } else {
-      // For phone signin, send OTP first
+      // For phone signin, send OTP first (no role needed for existing users)
       await sendPhoneVerification(phoneNumber: identifier);
       // After this, user needs to call verifyPhoneOTP
     }
@@ -365,6 +402,7 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _errorMessage = null;
     _verificationId = null;
+    _tempRole = null; // Clear temp role
     _setState(AuthState.unauthenticated);
   }
 
