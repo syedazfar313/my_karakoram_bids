@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'project_detail_screen.dart';
 
 class MyProjectsPage extends StatefulWidget {
@@ -191,97 +192,165 @@ class _MyProjectsPageState extends State<MyProjectsPage> {
             ),
           );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title and Status
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Project Image (Naksha) - NEW
+            if (project['planImage'] != null)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+                child: Container(
+                  height: 150,
+                  width: double.infinity,
+                  child: Image.file(
+                    project['planImage'] as File,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+            // Content Padding
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      project['title'] ?? 'Untitled Project',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                  // Title and Status
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          project['title'] ?? 'Untitled Project',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      statusText.toUpperCase(),
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          statusText.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
 
-              // Description
-              Text(
-                project['description'] ?? 'No description',
-                style: TextStyle(color: Colors.grey[700], fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-
-              // Location and Budget
-              Row(
-                children: [
-                  Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      project['location'] ?? 'Location not specified',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    ),
-                  ),
-                  if (project['budget'] != null && project['budget'].isNotEmpty)
-                    Text(
-                      'PKR ${project['budget']}',
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Bids count and date
-              Row(
-                children: [
-                  Icon(Icons.local_offer, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
+                  // Description
                   Text(
-                    '${project['bids']?.length ?? 0} bid${(project['bids']?.length ?? 0) != 1 ? 's' : ''}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    project['description'] ?? 'No description',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const Spacer(),
-                  Text(
-                    _formatDate(project['createdAt']),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  const SizedBox(height: 12),
+
+                  // Location and Budget
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          project['location'] ?? 'Location not specified',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      if (project['budget'] != null &&
+                          project['budget'].isNotEmpty)
+                        Text(
+                          'PKR ${project['budget']}',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+
+                  // Bids count and date
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.local_offer,
+                        size: 16,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${project['bids']?.length ?? 0} bid${(project['bids']?.length ?? 0) != 1 ? 's' : ''}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatDate(project['createdAt']),
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+
+                  // Plan Image Indicator (if image exists) - NEW
+                  if (project['planImage'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.image, size: 14, color: Colors.blue[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Floor plan attached',
+                            style: TextStyle(
+                              color: Colors.blue[600],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
