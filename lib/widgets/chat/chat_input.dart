@@ -177,7 +177,7 @@ class _ChatInputState extends State<ChatInput> {
             ),
             const SizedBox(height: 16),
 
-            // Quick emoji responses
+            // Quick emoji responses - FIXED EMOJIS
             Wrap(
               spacing: 8,
               children: [

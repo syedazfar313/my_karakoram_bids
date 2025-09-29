@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/message_model.dart';
+import 'package:my_karakoram_bids/models/message_model.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;

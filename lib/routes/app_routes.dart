@@ -7,7 +7,7 @@ import '../screens/client/client_home.dart';
 import '../screens/contractor/contractor_home.dart';
 import '../screens/client/post_project.dart';
 import '../screens/contractor/browse_projects.dart';
-//import '../screens/contractor/project_details.dart';
+import '../screens/contractor/project_details.dart';
 import '../screens/common/chat_screen.dart';
 import '../models/user.dart';
 
@@ -58,7 +58,7 @@ class AppRoutes {
       case projectDetails:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => ProjectDetailsScreen(
+          builder: (_) => ContractorProjectDetailsScreen(
             project: args['project'],
             onBid: args['onBid'],
           ),
@@ -80,6 +80,4 @@ class AppRoutes {
         );
     }
   }
-
-  static ProjectDetailsScreen({required project, required onBid}) {}
 }

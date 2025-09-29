@@ -29,6 +29,7 @@ class AuthProvider with ChangeNotifier {
   void _initAuthState() {
     _auth.authStateChanges().listen((User? firebaseUser) async {
       if (firebaseUser != null) {
+        // Load user from Firestore
         await _loadUserFromFirestore(firebaseUser);
         _setState(AuthState.authenticated);
       } else {
@@ -38,6 +39,7 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
+  // Load user data from Firestore
   Future<void> _loadUserFromFirestore(User firebaseUser) async {
     try {
       final doc = await _firestore
@@ -47,49 +49,74 @@ class AuthProvider with ChangeNotifier {
 
       if (doc.exists) {
         final data = doc.data()!;
+        final roleString = data['role'] as String? ?? 'client';
+        final role = roleString == 'contractor'
+            ? UserRole.contractor
+            : UserRole.client;
+
         _user = UserModel(
           id: firebaseUser.uid,
           name: data['name'] ?? firebaseUser.displayName ?? 'User',
           email: data['email'] ?? firebaseUser.email ?? '',
-          role: data['role'] == 'contractor'
-              ? UserRole.contractor
-              : UserRole.client,
+          role: role,
           phone: data['phone'] ?? firebaseUser.phoneNumber ?? '',
           imageUrl: data['imageUrl'] ?? firebaseUser.photoURL ?? '',
           experience: data['experience'] ?? '',
           completedProjects: List<String>.from(data['completedProjects'] ?? []),
           location: data['location'] ?? '',
         );
-        debugPrint('User loaded: ${_user!.name} as ${_user!.role}');
+
+        debugPrint('========== USER LOADED FROM FIRESTORE ==========');
+        debugPrint('User ID: ${_user!.id}');
+        debugPrint('User Name: ${_user!.name}');
+        debugPrint('User Email: ${_user!.email}');
+        debugPrint('User Role: ${_user!.role}');
+        debugPrint('Is Contractor: ${_user!.role == UserRole.contractor}');
+        debugPrint('Is Client: ${_user!.role == UserRole.client}');
       } else {
-        _createUserFromFirebase(firebaseUser, role: _tempRole);
-        await _saveUserToFirestore();
+        // If no Firestore doc, create default user
+        _createDefaultUser(firebaseUser);
       }
     } catch (e) {
-      debugPrint('Error loading user: $e');
-      _createUserFromFirebase(firebaseUser, role: _tempRole);
+      debugPrint('Error loading user from Firestore: $e');
+      _createDefaultUser(firebaseUser);
     }
   }
 
-  Future<void> _saveUserToFirestore() async {
-    if (_user == null) return;
+  void _createDefaultUser(User firebaseUser) {
+    _user = UserModel(
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName ?? 'User',
+      email: firebaseUser.email ?? '',
+      role: _tempRole ?? UserRole.client,
+      phone: firebaseUser.phoneNumber ?? '',
+      imageUrl: firebaseUser.photoURL ?? '',
+      experience: '',
+      completedProjects: [],
+      location: '',
+    );
+  }
 
+  // Save user to Firestore
+  Future<void> _saveUserToFirestore(UserModel user) async {
     try {
-      await _firestore.collection('users').doc(_user!.id).set({
-        'name': _user!.name,
-        'email': _user!.email,
-        'role': _user!.role == UserRole.contractor ? 'contractor' : 'client',
-        'phone': _user!.phone,
-        'imageUrl': _user!.imageUrl,
-        'experience': _user!.experience,
-        'completedProjects': _user!.completedProjects,
-        'location': _user!.location,
+      await _firestore.collection('users').doc(user.id).set({
+        'name': user.name,
+        'email': user.email,
+        'role': user.role == UserRole.contractor ? 'contractor' : 'client',
+        'phone': user.phone,
+        'imageUrl': user.imageUrl,
+        'experience': user.experience,
+        'completedProjects': user.completedProjects,
+        'location': user.location,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      debugPrint('User saved: ${_user!.name} as ${_user!.role}');
+
+      debugPrint('========== USER SAVED TO FIRESTORE ==========');
+      debugPrint('User Role Saved: ${user.role}');
     } catch (e) {
-      debugPrint('Error saving user: $e');
+      debugPrint('Error saving user to Firestore: $e');
     }
   }
 
@@ -103,43 +130,43 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _createUserFromFirebase(User firebaseUser, {UserRole? role}) {
-    _user = UserModel(
-      id: firebaseUser.uid,
-      name: firebaseUser.displayName ?? 'User',
-      email: firebaseUser.email ?? firebaseUser.phoneNumber ?? '',
-      role: role ?? _tempRole ?? UserRole.client,
-      phone: firebaseUser.phoneNumber ?? '',
-      imageUrl: firebaseUser.photoURL ?? '',
-      experience: '',
-      completedProjects: [],
-      location: '',
-    );
-    _tempRole = null;
-  }
-
   String? _validateName(String? name) {
-    if (name == null || name.trim().isEmpty) return 'Name is required';
-    if (name.trim().length < 2) return 'Name must be at least 2 characters';
+    if (name == null || name.trim().isEmpty) {
+      return 'Name is required';
+    }
+    if (name.trim().length < 2) {
+      return 'Name must be at least 2 characters';
+    }
     return null;
   }
 
   String? _validateEmail(String? email) {
-    if (email == null || email.isEmpty) return 'Email is required';
-    if (!email.contains('@') || !email.contains('.'))
+    if (email == null || email.isEmpty) {
+      return 'Email is required';
+    }
+    if (!email.contains('@') || !email.contains('.')) {
       return 'Enter a valid email address';
+    }
     return null;
   }
 
   String? _validatePhone(String? phone) {
-    if (phone == null || phone.isEmpty) return 'Phone number is required';
-    if (phone.length < 10) return 'Enter a valid phone number';
+    if (phone == null || phone.isEmpty) {
+      return 'Phone number is required';
+    }
+    if (phone.length < 10) {
+      return 'Enter a valid phone number';
+    }
     return null;
   }
 
   String? _validatePassword(String? password) {
-    if (password == null || password.isEmpty) return 'Password is required';
-    if (password.length < 6) return 'Password must be at least 6 characters';
+    if (password == null || password.isEmpty) {
+      return 'Password is required';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
     return null;
   }
 
@@ -164,21 +191,35 @@ class AuthProvider with ChangeNotifier {
 
       _tempRole = role;
 
+      debugPrint('========== SIGNUP START ==========');
+      debugPrint('Name: $name');
+      debugPrint('Email: $email');
+      debugPrint('Role: $role');
+
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       await result.user?.updateDisplayName(name);
-      await result.user?.sendEmailVerification();
 
-      _createUserFromFirebase(result.user!, role: role);
-      _user?.update(name: name);
-      if (_user != null) {
-        _user!.role = role;
-      }
+      _user = UserModel(
+        id: result.user!.uid,
+        name: name,
+        email: email,
+        role: role,
+        phone: '',
+        imageUrl: '',
+        experience: '',
+        completedProjects: [],
+        location: '',
+      );
 
-      await _saveUserToFirestore();
+      // Save to Firestore
+      await _saveUserToFirestore(_user!);
+
+      debugPrint('========== SIGNUP SUCCESS ==========');
+      debugPrint('User Role: ${_user!.role}');
 
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
@@ -209,12 +250,22 @@ class AuthProvider with ChangeNotifier {
       final passwordError = _validatePassword(password);
       if (passwordError != null) throw Exception(passwordError);
 
+      debugPrint('========== LOGIN START ==========');
+      debugPrint('Email: $email');
+
       final UserCredential result = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      // Load user from Firestore
       await _loadUserFromFirestore(result.user!);
+
+      debugPrint('========== LOGIN SUCCESS ==========');
+      debugPrint('User Role: ${_user?.role}');
+      debugPrint('Is Contractor: ${_user?.role == UserRole.contractor}');
+      debugPrint('Is Client: ${_user?.role == UserRole.client}');
+
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
@@ -253,8 +304,7 @@ class AuthProvider with ChangeNotifier {
           final UserCredential result = await _auth.signInWithCredential(
             credential,
           );
-          _createUserFromFirebase(result.user!, role: _tempRole);
-          await _saveUserToFirestore();
+          await _loadUserFromFirestore(result.user!);
           _setState(AuthState.authenticated);
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -301,13 +351,11 @@ class AuthProvider with ChangeNotifier {
         await result.user?.updateDisplayName(name);
       }
 
-      _createUserFromFirebase(result.user!, role: _tempRole);
+      await _loadUserFromFirestore(result.user!);
 
       if (name != null) {
         _user?.update(name: name);
       }
-
-      await _saveUserToFirestore();
 
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
@@ -346,38 +394,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> signUp({
-    required String name,
-    String? email,
-    String? phone,
-    required String password,
-    required UserRole role,
-  }) async {
-    if (email != null && email.isNotEmpty) {
-      await signUpWithEmail(
-        name: name,
-        email: email,
-        password: password,
-        role: role,
-      );
-    } else if (phone != null && phone.isNotEmpty) {
-      await sendPhoneVerification(phoneNumber: phone, role: role);
-    } else {
-      throw Exception("Please provide either email or phone number");
-    }
-  }
-
-  Future<void> signIn({
-    required String identifier,
-    required String password,
-  }) async {
-    if (identifier.contains('@')) {
-      await signInWithEmail(email: identifier, password: password);
-    } else {
-      await sendPhoneVerification(phoneNumber: identifier);
-    }
-  }
-
   void updateProfile({
     String? name,
     String? email,
@@ -406,7 +422,9 @@ class AuthProvider with ChangeNotifier {
       imageUrl: imageUrl,
     );
 
-    await _saveUserToFirestore();
+    // Update Firestore
+    await _saveUserToFirestore(_user!);
+
     notifyListeners();
   }
 
@@ -445,4 +463,9 @@ class AuthProvider with ChangeNotifier {
         return e.message ?? 'An error occurred';
     }
   }
+
+  Future<void> signIn({
+    required String identifier,
+    required String password,
+  }) async {}
 }

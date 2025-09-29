@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ConnectivityService {
@@ -18,7 +19,7 @@ class ConnectivityService {
   Timer? _timer;
 
   void initialize() {
-    // Simple connectivity check every 5 seconds
+    // Start periodic connectivity check
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       checkConnection();
     });
@@ -29,10 +30,19 @@ class ConnectivityService {
 
   Future<void> checkConnection() async {
     try {
-      // Simple mock connectivity check
-      // In real app, you would check actual internet connectivity
-      _updateConnectionStatus(true);
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 5));
+      final connected = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      _updateConnectionStatus(connected);
+    } on SocketException catch (_) {
+      _updateConnectionStatus(false);
+    } on TimeoutException catch (_) {
+      _updateConnectionStatus(false);
     } catch (e) {
+      if (kDebugMode) {
+        print('Connectivity check error: $e');
+      }
       _updateConnectionStatus(false);
     }
   }
