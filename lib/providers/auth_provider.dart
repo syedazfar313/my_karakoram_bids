@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart';
 
 enum AuthState { loading, authenticated, unauthenticated }
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserModel? _user;
   AuthState _state = AuthState.unauthenticated;
   String? _errorMessage;
-  String? _verificationId; // For phone auth
-  UserRole? _tempRole; // Temporary store role during signup
+  String? _verificationId;
+  UserRole? _tempRole;
 
   // Getters
   UserModel? get user => _user;
@@ -20,21 +22,75 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _state == AuthState.authenticated;
   bool get isLoading => _state == AuthState.loading;
 
-  // Constructor - Check current user
   AuthProvider() {
     _initAuthState();
   }
 
   void _initAuthState() {
-    _auth.authStateChanges().listen((User? firebaseUser) {
+    _auth.authStateChanges().listen((User? firebaseUser) async {
       if (firebaseUser != null) {
-        _createUserFromFirebase(firebaseUser);
+        await _loadUserFromFirestore(firebaseUser);
         _setState(AuthState.authenticated);
       } else {
         _user = null;
         _setState(AuthState.unauthenticated);
       }
     });
+  }
+
+  Future<void> _loadUserFromFirestore(User firebaseUser) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        _user = UserModel(
+          id: firebaseUser.uid,
+          name: data['name'] ?? firebaseUser.displayName ?? 'User',
+          email: data['email'] ?? firebaseUser.email ?? '',
+          role: data['role'] == 'contractor'
+              ? UserRole.contractor
+              : UserRole.client,
+          phone: data['phone'] ?? firebaseUser.phoneNumber ?? '',
+          imageUrl: data['imageUrl'] ?? firebaseUser.photoURL ?? '',
+          experience: data['experience'] ?? '',
+          completedProjects: List<String>.from(data['completedProjects'] ?? []),
+          location: data['location'] ?? '',
+        );
+        debugPrint('User loaded: ${_user!.name} as ${_user!.role}');
+      } else {
+        _createUserFromFirebase(firebaseUser, role: _tempRole);
+        await _saveUserToFirestore();
+      }
+    } catch (e) {
+      debugPrint('Error loading user: $e');
+      _createUserFromFirebase(firebaseUser, role: _tempRole);
+    }
+  }
+
+  Future<void> _saveUserToFirestore() async {
+    if (_user == null) return;
+
+    try {
+      await _firestore.collection('users').doc(_user!.id).set({
+        'name': _user!.name,
+        'email': _user!.email,
+        'role': _user!.role == UserRole.contractor ? 'contractor' : 'client',
+        'phone': _user!.phone,
+        'imageUrl': _user!.imageUrl,
+        'experience': _user!.experience,
+        'completedProjects': _user!.completedProjects,
+        'location': _user!.location,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('User saved: ${_user!.name} as ${_user!.role}');
+    } catch (e) {
+      debugPrint('Error saving user: $e');
+    }
   }
 
   void _setState(AuthState state) {
@@ -52,63 +108,41 @@ class AuthProvider with ChangeNotifier {
       id: firebaseUser.uid,
       name: firebaseUser.displayName ?? 'User',
       email: firebaseUser.email ?? firebaseUser.phoneNumber ?? '',
-      role:
-          role ??
-          _tempRole ??
-          UserRole.client, // Use provided role or temp role
+      role: role ?? _tempRole ?? UserRole.client,
       phone: firebaseUser.phoneNumber ?? '',
       imageUrl: firebaseUser.photoURL ?? '',
       experience: '',
       completedProjects: [],
       location: '',
     );
-
-    // Clear temp role after use
     _tempRole = null;
   }
 
-  // Validation methods (same as before)
   String? _validateName(String? name) {
-    if (name == null || name.trim().isEmpty) {
-      return 'Name is required';
-    }
-    if (name.trim().length < 2) {
-      return 'Name must be at least 2 characters';
-    }
+    if (name == null || name.trim().isEmpty) return 'Name is required';
+    if (name.trim().length < 2) return 'Name must be at least 2 characters';
     return null;
   }
 
   String? _validateEmail(String? email) {
-    if (email == null || email.isEmpty) {
-      return 'Email is required';
-    }
-    if (!email.contains('@') || !email.contains('.')) {
+    if (email == null || email.isEmpty) return 'Email is required';
+    if (!email.contains('@') || !email.contains('.'))
       return 'Enter a valid email address';
-    }
     return null;
   }
 
   String? _validatePhone(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      return 'Phone number is required';
-    }
-    if (phone.length < 10) {
-      return 'Enter a valid phone number';
-    }
+    if (phone == null || phone.isEmpty) return 'Phone number is required';
+    if (phone.length < 10) return 'Enter a valid phone number';
     return null;
   }
 
   String? _validatePassword(String? password) {
-    if (password == null || password.isEmpty) {
-      return 'Password is required';
-    }
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters';
-    }
+    if (password == null || password.isEmpty) return 'Password is required';
+    if (password.length < 6) return 'Password must be at least 6 characters';
     return null;
   }
 
-  // EMAIL/PASSWORD AUTHENTICATION
   Future<void> signUpWithEmail({
     required String name,
     required String email,
@@ -119,7 +153,6 @@ class AuthProvider with ChangeNotifier {
       _setState(AuthState.loading);
       _setError(null);
 
-      // Validate inputs
       final nameError = _validateName(name);
       if (nameError != null) throw Exception(nameError);
 
@@ -129,42 +162,35 @@ class AuthProvider with ChangeNotifier {
       final passwordError = _validatePassword(password);
       if (passwordError != null) throw Exception(passwordError);
 
-      // Store role temporarily
       _tempRole = role;
 
-      // Create user with Firebase
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Update display name
       await result.user?.updateDisplayName(name);
-
-      // Send email verification
       await result.user?.sendEmailVerification();
 
-      // Create user with correct role
       _createUserFromFirebase(result.user!, role: role);
-
-      // Update user with name and role
       _user?.update(name: name);
-      // Manually set role since update method doesn't handle role
       if (_user != null) {
         _user!.role = role;
       }
+
+      await _saveUserToFirestore();
 
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
       _setError(errorMessage);
       _setState(AuthState.unauthenticated);
-      _tempRole = null; // Clear temp role on error
+      _tempRole = null;
       throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
-      _tempRole = null; // Clear temp role on error
+      _tempRole = null;
       rethrow;
     }
   }
@@ -188,7 +214,7 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      _createUserFromFirebase(result.user!);
+      await _loadUserFromFirestore(result.user!);
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
@@ -202,7 +228,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // PHONE AUTHENTICATION
   Future<void> sendPhoneVerification({
     required String phoneNumber,
     UserRole? role,
@@ -214,35 +239,33 @@ class AuthProvider with ChangeNotifier {
       final phoneError = _validatePhone(phoneNumber);
       if (phoneError != null) throw Exception(phoneError);
 
-      // Store role for phone signup
       if (role != null) {
         _tempRole = role;
       }
 
-      // Format phone number (add country code if not present)
       String formattedPhone = phoneNumber.startsWith('+')
           ? phoneNumber
-          : '+92$phoneNumber'; // Pakistan country code
+          : '+92$phoneNumber';
 
       await _auth.verifyPhoneNumber(
         phoneNumber: formattedPhone,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto verification (on some Android devices)
           final UserCredential result = await _auth.signInWithCredential(
             credential,
           );
           _createUserFromFirebase(result.user!, role: _tempRole);
+          await _saveUserToFirestore();
           _setState(AuthState.authenticated);
         },
         verificationFailed: (FirebaseAuthException e) {
           String errorMessage = _getFirebaseErrorMessage(e);
           _setError(errorMessage);
           _setState(AuthState.unauthenticated);
-          _tempRole = null; // Clear temp role on error
+          _tempRole = null;
         },
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
-          _setState(AuthState.unauthenticated); // Wait for OTP input
+          _setState(AuthState.unauthenticated);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
           _verificationId = verificationId;
@@ -251,7 +274,7 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
-      _tempRole = null; // Clear temp role on error
+      _tempRole = null;
       rethrow;
     }
   }
@@ -274,34 +297,33 @@ class AuthProvider with ChangeNotifier {
         credential,
       );
 
-      // Update display name if provided (for new users)
       if (name != null && name.isNotEmpty) {
         await result.user?.updateDisplayName(name);
       }
 
-      // Create user with stored role
       _createUserFromFirebase(result.user!, role: _tempRole);
 
       if (name != null) {
         _user?.update(name: name);
       }
 
+      await _saveUserToFirestore();
+
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
       String errorMessage = _getFirebaseErrorMessage(e);
       _setError(errorMessage);
       _setState(AuthState.unauthenticated);
-      _tempRole = null; // Clear temp role on error
+      _tempRole = null;
       throw Exception(errorMessage);
     } catch (e) {
       _setError(e.toString());
       _setState(AuthState.unauthenticated);
-      _tempRole = null; // Clear temp role on error
+      _tempRole = null;
       rethrow;
     }
   }
 
-  // PASSWORD RESET
   Future<void> resetPassword(String email) async {
     try {
       _setState(AuthState.loading);
@@ -324,7 +346,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // COMBINED SIGN UP METHOD (for backward compatibility)
   Future<void> signUp({
     required String name,
     String? email,
@@ -340,15 +361,12 @@ class AuthProvider with ChangeNotifier {
         role: role,
       );
     } else if (phone != null && phone.isNotEmpty) {
-      // For phone signup, send verification with role
       await sendPhoneVerification(phoneNumber: phone, role: role);
-      // After this, user needs to call verifyPhoneOTP
     } else {
       throw Exception("Please provide either email or phone number");
     }
   }
 
-  // COMBINED SIGN IN METHOD (for backward compatibility)
   Future<void> signIn({
     required String identifier,
     required String password,
@@ -356,13 +374,10 @@ class AuthProvider with ChangeNotifier {
     if (identifier.contains('@')) {
       await signInWithEmail(email: identifier, password: password);
     } else {
-      // For phone signin, send OTP first (no role needed for existing users)
       await sendPhoneVerification(phoneNumber: identifier);
-      // After this, user needs to call verifyPhoneOTP
     }
   }
 
-  // PROFILE UPDATE
   void updateProfile({
     String? name,
     String? email,
@@ -374,7 +389,6 @@ class AuthProvider with ChangeNotifier {
   }) async {
     if (_user == null) return;
 
-    // Update Firebase user profile
     if (name != null) {
       await _auth.currentUser?.updateDisplayName(name);
     }
@@ -382,7 +396,6 @@ class AuthProvider with ChangeNotifier {
       await _auth.currentUser?.updatePhotoURL(imageUrl);
     }
 
-    // Update local user object
     _user!.update(
       name: name,
       email: email,
@@ -393,16 +406,16 @@ class AuthProvider with ChangeNotifier {
       imageUrl: imageUrl,
     );
 
+    await _saveUserToFirestore();
     notifyListeners();
   }
 
-  // SIGN OUT
   Future<void> signOut() async {
     await _auth.signOut();
     _user = null;
     _errorMessage = null;
     _verificationId = null;
-    _tempRole = null; // Clear temp role
+    _tempRole = null;
     _setState(AuthState.unauthenticated);
   }
 
@@ -410,7 +423,6 @@ class AuthProvider with ChangeNotifier {
     _setError(null);
   }
 
-  // Helper method to convert Firebase errors to user-friendly messages
   String _getFirebaseErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':

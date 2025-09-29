@@ -18,12 +18,10 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   bool obscurePass = true;
-  bool loading = false;
   UserRole? selectedRole;
 
   @override
   void dispose() {
-    // Memory leak prevent karne ke liye controllers dispose karna zaroori hai
     nameCtrl.dispose();
     emailCtrl.dispose();
     passCtrl.dispose();
@@ -46,6 +44,60 @@ class _SignupScreenState extends State<SignupScreen> {
         borderSide: BorderSide(color: color, width: 2),
       ),
     );
+  }
+
+  Future<void> _handleSignup() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.clearError();
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    try {
+      final input = emailCtrl.text.trim();
+
+      debugPrint('========== SIGNUP START ==========');
+      debugPrint('Selected Role: $selectedRole');
+
+      await authProvider.signUpWithEmail(
+        name: nameCtrl.text.trim(),
+        email: input,
+        password: passCtrl.text,
+        role: selectedRole!,
+      );
+
+      if (!mounted) return;
+
+      // Wait for auth state to update
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        final user = authProvider.user!;
+
+        debugPrint('========== SIGNUP COMPLETE ==========');
+        debugPrint('User Name: ${user.name}');
+        debugPrint('User Role: ${user.role}');
+        debugPrint('Is Contractor: ${user.role == UserRole.contractor}');
+        debugPrint('Is Client: ${user.role == UserRole.client}');
+
+        // CRITICAL: Check contractor FIRST, then client
+        final String route;
+        if (user.role == UserRole.contractor) {
+          route = AppRoutes.contractorHome;
+          debugPrint('Navigating to: CONTRACTOR HOME');
+        } else {
+          route = AppRoutes.clientHome;
+          debugPrint('Navigating to: CLIENT HOME');
+        }
+
+        Navigator.pushReplacementNamed(context, route, arguments: user);
+      } else {
+        debugPrint('ERROR: User not authenticated after signup');
+      }
+    } catch (e) {
+      debugPrint('Signup error: $e');
+    }
   }
 
   @override
@@ -164,19 +216,25 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Email or phone
+                              // Email field
                               TextFormField(
                                 controller: emailCtrl,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 decoration: _inputDecoration(
-                                  hint: "Email or Phone",
+                                  hint: "Email Address",
                                   icon: Icons.email_outlined,
                                   color: theme.colorScheme.primary,
                                 ),
-                                validator: (v) => v == null || v.trim().isEmpty
-                                    ? "Enter email or phone"
-                                    : null,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return "Enter email address";
+                                  }
+                                  if (!v.contains('@')) {
+                                    return "Enter a valid email";
+                                  }
+                                  return null;
+                                },
                                 onChanged: (value) {
                                   if (authProvider.errorMessage != null) {
                                     authProvider.clearError();
@@ -219,7 +277,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Role dropdown
+                              // Role dropdown - CONTRACTOR PEHLE
                               DropdownButtonFormField<UserRole>(
                                 value: selectedRole,
                                 decoration: _inputDecoration(
@@ -229,16 +287,18 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                                 items: const [
                                   DropdownMenuItem(
-                                    value: UserRole.client,
-                                    child: Text("Client"),
-                                  ),
-                                  DropdownMenuItem(
                                     value: UserRole.contractor,
                                     child: Text("Contractor"),
                                   ),
+                                  DropdownMenuItem(
+                                    value: UserRole.client,
+                                    child: Text("Client"),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => selectedRole = v),
+                                onChanged: (v) {
+                                  setState(() => selectedRole = v);
+                                  debugPrint('Role dropdown changed to: $v');
+                                },
                                 validator: (v) =>
                                     v == null ? "Please select a role" : null,
                               ),
@@ -256,54 +316,18 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                   onPressed: authProvider.isLoading
                                       ? null
-                                      : () async {
-                                          if (!_formKey.currentState!
-                                              .validate())
-                                            return;
-
-                                          try {
-                                            final input = emailCtrl.text.trim();
-                                            await authProvider.signUp(
-                                              name: nameCtrl.text.trim(),
-                                              email: input.contains("@")
-                                                  ? input
-                                                  : null,
-                                              phone: input.contains("@")
-                                                  ? null
-                                                  : input,
-                                              password: passCtrl.text,
-                                              role: selectedRole!,
-                                            );
-
-                                            if (mounted &&
-                                                authProvider.isAuthenticated) {
-                                              final user = authProvider.user!;
-                                              if (user.role ==
-                                                  UserRole.client) {
-                                                Navigator.pushReplacementNamed(
-                                                  context,
-                                                  AppRoutes.clientHome,
-                                                  arguments: user,
-                                                );
-                                              } else {
-                                                Navigator.pushReplacementNamed(
-                                                  context,
-                                                  AppRoutes.contractorHome,
-                                                  arguments: user,
-                                                );
-                                              }
-                                            }
-                                          } catch (e) {
-                                            // Error already handled by AuthProvider
-                                          }
-                                        },
+                                      : _handleSignup,
                                   child: authProvider.isLoading
-                                      ? const CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Text(
-                                          "Sign up",
+                                          "Sign Up",
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,

@@ -26,39 +26,58 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    Provider.of<AuthProvider>(context, listen: false).clearError();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.clearError();
 
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
     try {
-      await authProvider.signIn(
-        identifier: identifierCtrl.text.trim(),
+      final identifier = identifierCtrl.text.trim();
+
+      debugPrint('========== LOGIN START ==========');
+      debugPrint('Identifier: $identifier');
+
+      await authProvider.signInWithEmail(
+        email: identifier,
         password: passCtrl.text,
       );
 
-      if (mounted && authProvider.isAuthenticated) {
+      if (!mounted) return;
+
+      // Wait for auth state to fully update
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (authProvider.isAuthenticated && authProvider.user != null) {
         final user = authProvider.user!;
 
-        if (user.role == UserRole.client) {
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.clientHome,
-            arguments: user,
-          );
+        debugPrint('========== LOGIN COMPLETE ==========');
+        debugPrint('User Name: ${user.name}');
+        debugPrint('User Email: ${user.email}');
+        debugPrint('User Role: ${user.role}');
+        debugPrint('User Role String: ${user.role.toString()}');
+        debugPrint('Is Contractor: ${user.role == UserRole.contractor}');
+        debugPrint('Is Client: ${user.role == UserRole.client}');
+
+        // CRITICAL: Check contractor FIRST, then client
+        final String route;
+        if (user.role == UserRole.contractor) {
+          route = AppRoutes.contractorHome;
+          debugPrint('✅ Navigating to: CONTRACTOR HOME');
         } else {
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.contractorHome,
-            arguments: user,
-          );
+          route = AppRoutes.clientHome;
+          debugPrint('✅ Navigating to: CLIENT HOME');
         }
+
+        Navigator.pushReplacementNamed(context, route, arguments: user);
+      } else {
+        debugPrint('❌ ERROR: User not authenticated or user is null');
+        debugPrint('Authenticated: ${authProvider.isAuthenticated}');
+        debugPrint('User: ${authProvider.user}');
       }
     } catch (e) {
-      // Error is already handled by AuthProvider
+      debugPrint('❌ Login error: $e');
     }
   }
 
@@ -84,14 +103,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Scaffold(
-          backgroundColor: theme.colorScheme.primary, // Theme se blue color
+          backgroundColor: theme.colorScheme.primary,
           body: SafeArea(
             child: SingleChildScrollView(
               child: SizedBox(
                 height: size.height,
                 child: Column(
                   children: [
-                    // Blue top area - Theme color use kar rahe hain
+                    // Blue top area
                     Container(
                       height: size.height * 0.35,
                       width: double.infinity,
@@ -125,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    // White curved area - Background preserved
+                    // White curved area
                     Expanded(
                       child: Container(
                         width: double.infinity,
@@ -134,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           vertical: 32,
                         ),
                         decoration: const BoxDecoration(
-                          color: Colors.white, // White background preserved
+                          color: Colors.white,
                           borderRadius: BorderRadius.only(
                             topLeft: Radius.circular(40),
                             topRight: Radius.circular(40),
@@ -178,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
 
-                              // Email or Phone Field - Theme colors applied
+                              // Email or Phone Field
                               TextFormField(
                                 controller: identifierCtrl,
                                 keyboardType: TextInputType.emailAddress,
@@ -209,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Password Field - Theme colors applied
+                              // Password Field
                               TextFormField(
                                 controller: passCtrl,
                                 obscureText: obscurePass,
@@ -273,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Login Button - Theme colors applied
+                              // Login Button
                               SizedBox(
                                 height: 48,
                                 child: ElevatedButton(
