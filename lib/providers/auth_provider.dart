@@ -15,7 +15,6 @@ class AuthProvider with ChangeNotifier {
   String? _verificationId;
   UserRole? _tempRole;
 
-  // Getters
   UserModel? get user => _user;
   AuthState get state => _state;
   String? get errorMessage => _errorMessage;
@@ -29,7 +28,6 @@ class AuthProvider with ChangeNotifier {
   void _initAuthState() {
     _auth.authStateChanges().listen((User? firebaseUser) async {
       if (firebaseUser != null) {
-        // Load user from Firestore
         await _loadUserFromFirestore(firebaseUser);
         _setState(AuthState.authenticated);
       } else {
@@ -39,9 +37,11 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  // Load user data from Firestore
   Future<void> _loadUserFromFirestore(User firebaseUser) async {
     try {
+      debugPrint('========== LOADING USER FROM FIRESTORE ==========');
+      debugPrint('User ID: ${firebaseUser.uid}');
+
       final doc = await _firestore
           .collection('users')
           .doc(firebaseUser.uid)
@@ -67,14 +67,14 @@ class AuthProvider with ChangeNotifier {
         );
 
         debugPrint('========== USER LOADED FROM FIRESTORE ==========');
-        debugPrint('User ID: ${_user!.id}');
         debugPrint('User Name: ${_user!.name}');
         debugPrint('User Email: ${_user!.email}');
-        debugPrint('User Role: ${_user!.role}');
+        debugPrint('Role from Firestore: $roleString');
+        debugPrint('User Role Enum: ${_user!.role}');
         debugPrint('Is Contractor: ${_user!.role == UserRole.contractor}');
         debugPrint('Is Client: ${_user!.role == UserRole.client}');
       } else {
-        // If no Firestore doc, create default user
+        debugPrint('No Firestore document found, creating default user');
         _createDefaultUser(firebaseUser);
       }
     } catch (e) {
@@ -97,13 +97,21 @@ class AuthProvider with ChangeNotifier {
     );
   }
 
-  // Save user to Firestore
   Future<void> _saveUserToFirestore(UserModel user) async {
     try {
+      final roleString = user.role == UserRole.contractor
+          ? 'contractor'
+          : 'client';
+
+      debugPrint('========== SAVING USER TO FIRESTORE ==========');
+      debugPrint('User ID: ${user.id}');
+      debugPrint('User Name: ${user.name}');
+      debugPrint('User Role: $roleString');
+
       await _firestore.collection('users').doc(user.id).set({
         'name': user.name,
         'email': user.email,
-        'role': user.role == UserRole.contractor ? 'contractor' : 'client',
+        'role': roleString,
         'phone': user.phone,
         'imageUrl': user.imageUrl,
         'experience': user.experience,
@@ -111,12 +119,12 @@ class AuthProvider with ChangeNotifier {
         'location': user.location,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
 
-      debugPrint('========== USER SAVED TO FIRESTORE ==========');
-      debugPrint('User Role Saved: ${user.role}');
+      debugPrint('User saved successfully to Firestore');
     } catch (e) {
       debugPrint('Error saving user to Firestore: $e');
+      rethrow;
     }
   }
 
@@ -215,7 +223,6 @@ class AuthProvider with ChangeNotifier {
         location: '',
       );
 
-      // Save to Firestore
       await _saveUserToFirestore(_user!);
 
       debugPrint('========== SIGNUP SUCCESS ==========');
@@ -258,7 +265,6 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      // Load user from Firestore
       await _loadUserFromFirestore(result.user!);
 
       debugPrint('========== LOGIN SUCCESS ==========');
@@ -353,8 +359,9 @@ class AuthProvider with ChangeNotifier {
 
       await _loadUserFromFirestore(result.user!);
 
-      if (name != null) {
-        _user?.update(name: name);
+      if (name != null && _user != null) {
+        _user!.update(name: name);
+        await _saveUserToFirestore(_user!);
       }
 
       _setState(AuthState.authenticated);
@@ -422,7 +429,6 @@ class AuthProvider with ChangeNotifier {
       imageUrl: imageUrl,
     );
 
-    // Update Firestore
     await _saveUserToFirestore(_user!);
 
     notifyListeners();
@@ -463,9 +469,4 @@ class AuthProvider with ChangeNotifier {
         return e.message ?? 'An error occurred';
     }
   }
-
-  Future<void> signIn({
-    required String identifier,
-    required String password,
-  }) async {}
 }

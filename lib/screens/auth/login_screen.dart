@@ -39,54 +39,45 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint('========== LOGIN START ==========');
       debugPrint('Identifier: $identifier');
 
-      await authProvider.signIn(
-        identifier: identifier,
+      await authProvider.signInWithEmail(
+        email: identifier,
         password: passCtrl.text,
       );
 
       if (!mounted) return;
 
-      final user = authProvider.user;
+      // Wait for Firestore data to load
+      await Future.delayed(const Duration(milliseconds: 1500));
 
-      if (authProvider.isAuthenticated && user != null) {
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        final user = authProvider.user!;
+
         debugPrint('========== LOGIN COMPLETE ==========');
         debugPrint('User Name: ${user.name}');
         debugPrint('User Email: ${user.email}');
         debugPrint('User Role: ${user.role}');
+        debugPrint('User Role String: ${user.role.toString()}');
+        debugPrint('Is Contractor: ${user.role == UserRole.contractor}');
+        debugPrint('Is Client: ${user.role == UserRole.client}');
 
+        // Determine route based on role
+        final String route;
         if (user.role == UserRole.contractor) {
+          route = AppRoutes.contractorHome;
           debugPrint('✅ Navigating to: CONTRACTOR HOME');
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.contractorHome,
-            arguments: user,
-          );
-        } else if (user.role == UserRole.client) {
-          debugPrint('✅ Navigating to: CLIENT HOME');
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.clientHome,
-            arguments: user,
-          );
         } else {
-          debugPrint('❌ ERROR: Unknown role -> ${user.role}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Invalid role. Please contact support."),
-            ),
-          );
+          route = AppRoutes.clientHome;
+          debugPrint('✅ Navigating to: CLIENT HOME');
         }
+
+        Navigator.pushReplacementNamed(context, route, arguments: user);
       } else {
         debugPrint('❌ ERROR: User not authenticated or user is null');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login failed. Please try again.")),
-        );
+        debugPrint('Authenticated: ${authProvider.isAuthenticated}');
+        debugPrint('User: ${authProvider.user}');
       }
     } catch (e) {
       debugPrint('❌ Login error: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
     }
   }
 
@@ -119,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: size.height,
                 child: Column(
                   children: [
-                    // Top area
+                    // Blue top area
                     Container(
                       height: size.height * 0.35,
                       width: double.infinity,
@@ -173,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // Error message
                               if (authProvider.errorMessage != null)
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 16),
@@ -205,6 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
 
+                              // Email or Phone Field
                               TextFormField(
                                 controller: identifierCtrl,
                                 keyboardType: TextInputType.emailAddress,
@@ -235,6 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 24),
 
+                              // Password Field
                               TextFormField(
                                 controller: passCtrl,
                                 obscureText: obscurePass,
@@ -276,6 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 },
                               ),
 
+                              // Forgot Password
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
@@ -297,6 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 16),
 
+                              // Login Button
                               SizedBox(
                                 height: 48,
                                 child: ElevatedButton(
@@ -337,6 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               const SizedBox(height: 20),
 
+                              // Sign up link
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -363,6 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ],
                               ),
 
+                              // Version info
                               const SizedBox(height: 20),
                               const Center(
                                 child: Text(
