@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ContractorProjectDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> project;
@@ -544,40 +546,57 @@ class ContractorProjectDetailsScreen extends StatelessWidget {
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate()) {
+                final user = FirebaseAuth.instance.currentUser;
+
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("You must be logged in to place a bid"),
+                    ),
+                  );
+                  return;
+                }
+
                 final bid = {
-                  'project': project['title'],
                   'projectId': project['id'],
+                  'projectTitle': project['title'],
+                  'contractorId': user.uid,
+                  'contractorName': user.displayName ?? 'Unknown Contractor',
+                  'contractorEmail': user.email,
                   'amount': amountController.text.trim(),
                   'days': daysController.text.trim(),
                   'comment': commentController.text.trim(),
                   'status': 'pending',
-                  'timestamp': DateTime.now().toIso8601String(),
+                  'timestamp': FieldValue.serverTimestamp(),
                 };
-                onBid(bid);
-                Navigator.pop(context);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Bid placed successfully! Client will review your proposal.',
+
+                try {
+                  await FirebaseFirestore.instance.collection('bids').add(bid);
+
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Bid placed successfully! Client will review your proposal.',
+                      ),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 3),
                     ),
-                    backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 3),
-                    action: SnackBarAction(
-                      label: 'OK',
-                      textColor: Colors.white,
-                      onPressed: () {},
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to place bid: $e'),
+                      backgroundColor: Colors.red,
                     ),
-                  ),
-                );
+                  );
+                }
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
             child: const Text(
               'Submit Bid',
               style: TextStyle(fontWeight: FontWeight.bold),

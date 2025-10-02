@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import '../common/chat_screen.dart';
+import 'contractor_profile_view_screen.dart';
 
-class ProjectDetailScreen extends StatelessWidget {
+class ProjectDetailScreen extends StatefulWidget {
   final Map<String, dynamic> project;
   const ProjectDetailScreen({super.key, required this.project});
 
   @override
+  State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
+}
+
+class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+  // Track accepted/rejected bids
+  final Map<String, String> _bidStatuses = {}; // bidId -> status
+
+  @override
   Widget build(BuildContext context) {
-    final bids = project['bids'] ?? [];
+    final bids = widget.project['bids'] ?? [];
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          project['title'] ?? 'Project Details',
+          widget.project['title'] ?? 'Project Details',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -23,12 +33,11 @@ class ProjectDetailScreen extends StatelessWidget {
         elevation: 2,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // Add share button if needed
-          if (project['planImage'] != null)
+          if (widget.project['planImage'] != null)
             IconButton(
               icon: const Icon(Icons.fullscreen, color: Colors.white),
               onPressed: () =>
-                  _showFullScreenImage(context, project['planImage']),
+                  _showFullScreenImage(context, widget.project['planImage']),
             ),
         ],
       ),
@@ -37,21 +46,22 @@ class ProjectDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Project Image (Naksha) - ENHANCED SECTION
-            if (project['planImage'] != null) ...[
+            if (widget.project['planImage'] != null) ...[
               Container(
                 width: double.infinity,
-                height: 300, // Increased height for better visibility
+                height: 300,
                 child: Stack(
                   children: [
-                    // Main Image
                     GestureDetector(
-                      onTap: () =>
-                          _showFullScreenImage(context, project['planImage']),
+                      onTap: () => _showFullScreenImage(
+                        context,
+                        widget.project['planImage'],
+                      ),
                       child: Container(
                         width: double.infinity,
                         height: 300,
                         child: Image.file(
-                          project['planImage'] as File,
+                          widget.project['planImage'] as File,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
@@ -74,13 +84,6 @@ class ProjectDetailScreen extends StatelessWidget {
                                         fontSize: 16,
                                       ),
                                     ),
-                                    Text(
-                                      'Tap to retry',
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -89,8 +92,6 @@ class ProjectDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-
-                    // Image Overlay with Info
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -128,7 +129,7 @@ class ProjectDetailScreen extends StatelessWidget {
                             GestureDetector(
                               onTap: () => _showFullScreenImage(
                                 context,
-                                project['planImage'],
+                                widget.project['planImage'],
                               ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -160,7 +161,6 @@ class ProjectDetailScreen extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              // No Image Placeholder
               Container(
                 width: double.infinity,
                 height: 150,
@@ -191,7 +191,7 @@ class ProjectDetailScreen extends StatelessWidget {
                 children: [
                   // Project Title
                   Text(
-                    project['title'] ?? 'Untitled Project',
+                    widget.project['title'] ?? 'Untitled Project',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
@@ -202,27 +202,23 @@ class ProjectDetailScreen extends StatelessWidget {
                   // Project Info Cards
                   Row(
                     children: [
-                      // Budget Card
-                      if (project['budget'] != null &&
-                          project['budget'].isNotEmpty)
+                      if (widget.project['budget'] != null &&
+                          widget.project['budget'].isNotEmpty)
                         Expanded(
                           child: _buildInfoCard(
                             icon: Icons.attach_money,
                             title: 'Budget',
-                            value: 'PKR ${project['budget']}',
+                            value: 'PKR ${widget.project['budget']}',
                             color: Colors.green.shade700,
                             backgroundColor: Colors.green.shade50,
                           ),
                         ),
-
                       const SizedBox(width: 8),
-
-                      // Location Card
                       Expanded(
                         child: _buildInfoCard(
                           icon: Icons.location_on,
                           title: 'Location',
-                          value: project['location'] ?? 'Not specified',
+                          value: widget.project['location'] ?? 'Not specified',
                           color: Colors.blue.shade700,
                           backgroundColor: Colors.blue.shade50,
                         ),
@@ -236,12 +232,12 @@ class ProjectDetailScreen extends StatelessWidget {
                   _buildSection(
                     title: 'Project Description',
                     content:
-                        project['description'] ?? 'No description provided.',
+                        widget.project['description'] ??
+                        'No description provided.',
                     theme: theme,
                   ),
 
-                  // Plan Image Status (if image exists)
-                  if (project['planImage'] != null) ...[
+                  if (widget.project['planImage'] != null) ...[
                     const SizedBox(height: 16),
                     Container(
                       width: double.infinity,
@@ -273,7 +269,7 @@ class ProjectDetailScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Detailed architectural plan has been uploaded for this project',
+                                  'Detailed architectural plan has been uploaded',
                                   style: TextStyle(
                                     color: Colors.blue.shade600,
                                     fontSize: 12,
@@ -285,7 +281,7 @@ class ProjectDetailScreen extends StatelessWidget {
                           GestureDetector(
                             onTap: () => _showFullScreenImage(
                               context,
-                              project['planImage'],
+                              widget.project['planImage'],
                             ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -475,6 +471,10 @@ class ProjectDetailScreen extends StatelessWidget {
 
     return Column(
       children: bids.map<Widget>((bid) {
+        final bidId =
+            bid['id']?.toString() ?? bid['contractorId']?.toString() ?? '';
+        final currentStatus = _bidStatuses[bidId] ?? 'pending';
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
@@ -489,13 +489,31 @@ class ProjectDetailScreen extends StatelessWidget {
                 // Contractor Name and Amount
                 Row(
                   children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.blue.shade100,
+                      child: Icon(Icons.person, color: Colors.blue.shade700),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        bid['contractorName'] ?? 'Unknown Contractor',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            bid['contractorName'] ?? 'Unknown Contractor',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Completion: ${bid['days']} days',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Container(
@@ -518,18 +536,19 @@ class ProjectDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
 
-                // Days and Comment
-                Text(
-                  'Completion: ${bid['days']} days',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                ),
-                if (bid['comment'] != null && bid['comment'].isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                if (bid['comment'] != null && bid['comment'].isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
                     child: Text(
-                      'Comment: ${bid['comment']}',
+                      bid['comment'],
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 14,
@@ -537,43 +556,149 @@ class ProjectDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                ],
 
                 const SizedBox(height: 12),
 
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _acceptBid(bid),
-                        icon: const Icon(Icons.check_circle, size: 18),
-                        label: const Text('Accept'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                // Action Buttons based on status
+                if (currentStatus == 'pending') ...[
+                  // Profile View button for pending bids
+                  OutlinedButton.icon(
+                    onPressed: () => _viewProfile(bid),
+                    icon: const Icon(Icons.person, size: 18),
+                    label: const Text('View Contractor Profile'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _acceptBid(bid, bidId),
+                          icon: const Icon(Icons.check_circle, size: 18),
+                          label: const Text('Hire'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _rejectBid(bid),
-                        icon: const Icon(Icons.cancel, size: 18),
-                        label: const Text('Reject'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _rejectBid(bid, bidId),
+                          icon: const Icon(Icons.cancel, size: 18),
+                          label: const Text('Reject'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ] else if (currentStatus == 'accepted') ...[
+                  // Show Message and Profile View buttons after hiring
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Contractor Hired',
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openChat(bid),
+                          icon: const Icon(Icons.message, size: 18),
+                          label: const Text('Message'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _viewProfile(bid),
+                          icon: const Icon(Icons.person, size: 18),
+                          label: const Text('View Profile'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue,
+                            side: const BorderSide(color: Colors.blue),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (currentStatus == 'rejected') ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.cancel,
+                          color: Colors.red.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Bid Rejected',
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -591,14 +716,102 @@ class ProjectDetailScreen extends StatelessWidget {
     );
   }
 
-  void _acceptBid(Map<String, dynamic> bid) {
-    // Handle bid acceptance
-    debugPrint('Accepted bid from ${bid['contractorName']}');
+  void _acceptBid(Map<String, dynamic> bid, String bidId) {
+    setState(() {
+      _bidStatuses[bidId] = 'accepted';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Contractor Hired Successfully!',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'You can now message ${bid['contractorName']} to discuss project details',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    debugPrint('Hired contractor: ${bid['contractorName']}');
+    debugPrint('Bid Amount: PKR ${bid['amount']}');
   }
 
-  void _rejectBid(Map<String, dynamic> bid) {
-    // Handle bid rejection
-    debugPrint('Rejected bid from ${bid['contractorName']}');
+  void _rejectBid(Map<String, dynamic> bid, String bidId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Bid'),
+        content: Text(
+          'Are you sure you want to reject the bid from ${bid['contractorName']}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _bidStatuses[bidId] = 'rejected';
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Bid from ${bid['contractorName']} rejected'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+
+              debugPrint('Rejected bid from ${bid['contractorName']}');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openChat(Map<String, dynamic> bid) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          userName: bid['contractorName'] ?? 'Contractor',
+          userImage: 'assets/images/avatar.png',
+        ),
+      ),
+    );
+  }
+
+  void _viewProfile(Map<String, dynamic> bid) {
+    final bidId =
+        bid['id']?.toString() ?? bid['contractorId']?.toString() ?? '';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContractorProfileViewScreen(
+          bid: bid,
+          onHire: () => _acceptBid(bid, bidId),
+          onMessage: () => _openChat(bid),
+        ),
+      ),
+    );
   }
 }
 
@@ -621,7 +834,6 @@ class FullScreenImageViewer extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share, color: Colors.white),
             onPressed: () {
-              // Implement share functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Share functionality not implemented yet'),
