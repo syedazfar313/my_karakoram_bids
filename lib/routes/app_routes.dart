@@ -68,8 +68,15 @@ class AppRoutes {
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
           builder: (_) => ChatScreen(
-            userName: args['userName'],
-            userImage: args['userImage'],
+            chatId: args['chatId'] ?? '',
+            otherUserId: args['otherUserId'] ?? '',
+            otherUserName: args['otherUserName'] ?? args['userName'] ?? 'User',
+            otherUserAvatar:
+                args['otherUserAvatar'] ??
+                args['userImage'] ??
+                'assets/images/avatar.png',
+            currentUserId: args['currentUserId'] ?? 'demo_user',
+            currentUserName: args['currentUserName'] ?? 'You',
           ),
         );
 

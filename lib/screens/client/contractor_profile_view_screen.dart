@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 
-class ContractorProfileViewScreen extends StatelessWidget {
+class ContractorProfileViewScreen extends StatefulWidget {
   final Map<String, dynamic> bid;
   final VoidCallback? onHire;
   final VoidCallback? onMessage;
@@ -13,12 +15,124 @@ class ContractorProfileViewScreen extends StatelessWidget {
   });
 
   @override
+  State<ContractorProfileViewScreen> createState() =>
+      _ContractorProfileViewScreenState();
+}
+
+class _ContractorProfileViewScreenState
+    extends State<ContractorProfileViewScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _contractorData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContractorProfile();
+  }
+
+  Future<void> _fetchContractorProfile() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final contractorId = widget.bid['contractorId'];
+
+      print('🔍 Fetching contractor profile for ID: $contractorId');
+
+      if (contractorId == null || contractorId.toString().isEmpty) {
+        print('❌ Contractor ID is null or empty');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Fetch contractor data from users collection
+      final docSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(contractorId.toString())
+          .get();
+
+      if (docSnapshot.exists) {
+        setState(() {
+          _contractorData = docSnapshot.data();
+          _isLoading = false;
+        });
+        print('✅ Contractor profile loaded successfully');
+      } else {
+        print('❌ Contractor profile not found');
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print('❌ Error fetching contractor profile: $e');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading contractor profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildProfileImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return const CircleAvatar(
+        radius: 50,
+        backgroundColor: Colors.white,
+        child: Icon(Icons.person, size: 50, color: Colors.blue),
+      );
+    }
+
+    if (imageUrl.startsWith('/') || imageUrl.startsWith('file://')) {
+      return CircleAvatar(
+        radius: 50,
+        backgroundColor: Colors.white,
+        backgroundImage: FileImage(File(imageUrl)),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Error loading local image: $exception');
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 50,
+        backgroundColor: Colors.white,
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Error loading network image: $exception');
+        },
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final contractorName = bid['contractorName'] ?? 'Unknown Contractor';
-    final bidAmount = bid['amount'] ?? '0';
-    final completionDays = bid['days'] ?? '0';
-    final proposal = bid['comment'] ?? '';
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Contractor Profile'),
+          backgroundColor: theme.colorScheme.primary,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Use contractor data from Firestore, fallback to bid data
+    final contractorName =
+        _contractorData?['name'] ??
+        widget.bid['contractorName'] ??
+        'Unknown Contractor';
+    final email = _contractorData?['email'] ?? 'Not provided';
+    final phone = _contractorData?['phone'] ?? 'Not provided';
+    final location = _contractorData?['location'] ?? 'Not provided';
+    final experience = _contractorData?['experience'] ?? 'Not provided';
+    final imageUrl = _contractorData?['imageUrl'] ?? '';
+    final completedProjects = _contractorData?['completedProjects'] ?? [];
+
+    final bidAmount = widget.bid['amount'] ?? '0';
+    final completionDays = widget.bid['days'] ?? '0';
+    final proposal = widget.bid['comment'] ?? widget.bid['message'] ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -45,14 +159,11 @@ class ContractorProfileViewScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: theme.colorScheme.primary,
-                      ),
+                    GestureDetector(
+                      onTap: imageUrl.isNotEmpty
+                          ? () => _showFullScreenImage(context, imageUrl)
+                          : null,
+                      child: _buildProfileImage(imageUrl),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -91,15 +202,25 @@ class ContractorProfileViewScreen extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 16),
+
+                // Bid Details Card
                 _buildBidCard(bidAmount, completionDays, proposal),
+
                 const SizedBox(height: 12),
-                _buildContactCard(),
+
+                // Contact Information Card
+                _buildContactCard(email, phone, location),
+
                 const SizedBox(height: 12),
-                _buildProfessionalCard(),
+
+                // Professional Details Card
+                _buildProfessionalCard(experience, completedProjects),
+
                 const SizedBox(height: 12),
+
+                // Skills Card
                 _buildSkillsCard(),
-                const SizedBox(height: 12),
-                _buildReviewsCard(),
+
                 const SizedBox(height: 100),
               ],
             ),
@@ -125,7 +246,7 @@ class ContractorProfileViewScreen extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    if (onMessage != null) onMessage!();
+                    if (widget.onMessage != null) widget.onMessage!();
                   },
                   icon: const Icon(Icons.message, size: 20),
                   label: const Text('Message'),
@@ -145,7 +266,7 @@ class ContractorProfileViewScreen extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    if (onHire != null) onHire!();
+                    if (widget.onHire != null) widget.onHire!();
                   },
                   icon: const Icon(Icons.check_circle, size: 20),
                   label: const Text('Hire Contractor'),
@@ -276,7 +397,7 @@ class ContractorProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard() {
+  Widget _buildContactCard(String email, String phone, String location) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -324,24 +445,14 @@ class ContractorProfileViewScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildInfoRow(
-                  Icons.email,
-                  'Email',
-                  'contractor@example.com',
-                  Colors.blue,
-                ),
+                _buildInfoRow(Icons.email, 'Email', email, Colors.blue),
                 const Divider(height: 24),
-                _buildInfoRow(
-                  Icons.phone,
-                  'Phone',
-                  '+92-300-1234567',
-                  Colors.green,
-                ),
+                _buildInfoRow(Icons.phone, 'Phone', phone, Colors.green),
                 const Divider(height: 24),
                 _buildInfoRow(
                   Icons.location_on,
                   'Location',
-                  'Gilgit, Gilgit-Baltistan',
+                  location,
                   Colors.red,
                 ),
               ],
@@ -352,7 +463,10 @@ class ContractorProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfessionalCard() {
+  Widget _buildProfessionalCard(
+    String experience,
+    List<dynamic> completedProjects,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -399,30 +513,61 @@ class ContractorProfileViewScreen extends StatelessWidget {
                 _buildInfoRow(
                   Icons.school,
                   'Experience',
-                  '5+ years in construction',
+                  experience,
                   Colors.purple,
                 ),
-                const Divider(height: 24),
-                _buildInfoRow(
-                  Icons.check_circle,
-                  'Completed Projects',
-                  '25+ successful projects',
-                  Colors.teal,
-                ),
-                const Divider(height: 24),
-                _buildInfoRow(
-                  Icons.star,
-                  'Specialization',
-                  'Residential & Commercial Buildings',
-                  Colors.amber,
-                ),
-                const Divider(height: 24),
-                _buildInfoRow(
-                  Icons.verified,
-                  'Verification',
-                  'Verified Contractor',
-                  Colors.green,
-                ),
+                if (completedProjects.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.teal.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Completed Projects',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: completedProjects.map((project) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.teal.shade200),
+                            ),
+                            child: Text(
+                              project.toString(),
+                              style: TextStyle(
+                                color: Colors.teal.shade700,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -503,105 +648,6 @@ class ContractorProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReviewsCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.star, color: Colors.amber.shade600, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Ratings & Reviews',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Text(
-                '4.8',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber.shade700,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          Icons.star,
-                          color: Colors.amber.shade600,
-                          size: 20,
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Based on 15 reviews',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.thumb_up, color: Colors.amber.shade700, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Highly recommended by previous clients',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.amber.shade900,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,6 +679,36 @@ class ContractorProfileViewScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: const Text(
+              'Profile Picture',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: imageUrl.startsWith('/') || imageUrl.startsWith('file://')
+                  ? Image.file(File(imageUrl), fit: BoxFit.contain)
+                  : Image.network(imageUrl, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

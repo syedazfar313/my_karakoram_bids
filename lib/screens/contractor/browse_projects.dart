@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'project_details.dart'; // Import the details screen
 
 class BrowseProjectsScreen extends StatefulWidget {
@@ -19,19 +20,77 @@ class BrowseProjectsScreen extends StatefulWidget {
 class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _filteredProjects = [];
+  List<Map<String, dynamic>> _allProjects = [];
   String _searchQuery = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _filteredProjects = widget.projects;
     _searchController.addListener(_onSearchChanged);
+    _fetchProjectsFromDatabase();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Database se projects fetch karna
+  Future<void> _fetchProjectsFromDatabase() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('projects')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      List<Map<String, dynamic>> fetchedProjects = [];
+
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> projectData = doc.data() as Map<String, dynamic>;
+        projectData['id'] = doc.id;
+
+        // Timestamp ko String mein convert karna
+        if (projectData['createdAt'] is Timestamp) {
+          projectData['createdAt'] = (projectData['createdAt'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+
+        // Image URL ko File object mein convert karna (agar zaroorat ho)
+        if (projectData['planImageUrl'] != null) {
+          // Yahan aap image URL ko handle kar sakte hain
+          // Agar local file hai to:
+          // projectData['planImage'] = File(projectData['planImageUrl']);
+        }
+
+        fetchedProjects.add(projectData);
+      }
+
+      setState(() {
+        _allProjects = fetchedProjects;
+        _filteredProjects = fetchedProjects;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching projects: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading projects: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onSearchChanged() {
@@ -43,10 +102,10 @@ class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
 
   void _filterProjects() {
     if (_searchQuery.isEmpty) {
-      _filteredProjects = widget.projects;
+      _filteredProjects = _allProjects;
     } else {
       final query = _searchQuery.toLowerCase();
-      _filteredProjects = widget.projects.where((project) {
+      _filteredProjects = _allProjects.where((project) {
         return (project['title']?.toLowerCase().contains(query) ?? false) ||
             (project['description']?.toLowerCase().contains(query) ?? false) ||
             (project['location']?.toLowerCase().contains(query) ?? false);
@@ -55,7 +114,7 @@ class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
   }
 
   Future<void> _refreshProjects() async {
-    await Future.delayed(const Duration(seconds: 1));
+    await _fetchProjectsFromDatabase();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -464,17 +523,19 @@ class _BrowseProjectsScreenState extends State<BrowseProjectsScreen> {
           ),
         // Projects List
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _refreshProjects,
-            child: _filteredProjects.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredProjects.length,
-                    itemBuilder: (context, index) =>
-                        _buildProjectCard(_filteredProjects[index]),
-                  ),
-          ),
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _refreshProjects,
+                  child: _filteredProjects.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _filteredProjects.length,
+                          itemBuilder: (context, index) =>
+                              _buildProjectCard(_filteredProjects[index]),
+                        ),
+                ),
         ),
       ],
     );

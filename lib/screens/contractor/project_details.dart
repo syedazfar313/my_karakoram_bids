@@ -554,10 +554,19 @@ class ContractorProjectDetailsScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("You must be logged in to place a bid"),
+                      backgroundColor: Colors.red,
                     ),
                   );
                   return;
                 }
+
+                // Loading indicator show karna
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
 
                 final bid = {
                   'projectId': project['id'],
@@ -566,28 +575,40 @@ class ContractorProjectDetailsScreen extends StatelessWidget {
                   'contractorName': user.displayName ?? 'Unknown Contractor',
                   'contractorEmail': user.email,
                   'amount': amountController.text.trim(),
+                  'bidAmount': amountController.text.trim(),
                   'days': daysController.text.trim(),
+                  'duration': daysController.text.trim(),
+                  'message': commentController.text.trim(),
                   'comment': commentController.text.trim(),
-                  'status': 'pending',
-                  'timestamp': FieldValue.serverTimestamp(),
+                  'status': 'Pending',
+                  'createdAt':
+                      Timestamp.now(), // Server timestamp ki jagah directly Timestamp use karo
                 };
 
                 try {
                   await FirebaseFirestore.instance.collection('bids').add(bid);
 
+                  // Loading dialog close karna
                   Navigator.pop(context);
+                  // Bid dialog close karna
+                  Navigator.pop(context);
+                  // Details screen close karna
                   Navigator.pop(context);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'Bid placed successfully! Client will review your proposal.',
+                        'Bid placed successfully! Check "My Bids" tab to view.',
                       ),
                       backgroundColor: Colors.green,
                       duration: Duration(seconds: 3),
                     ),
                   );
                 } catch (e) {
+                  // Loading dialog close karna
+                  Navigator.pop(context);
+
+                  print('Error placing bid: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Failed to place bid: $e'),
