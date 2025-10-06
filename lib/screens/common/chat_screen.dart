@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart';
+import '../../core/services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -30,11 +33,57 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   bool _isTyping = false;
 
+  // Add these variables to store real user data
+  String _displayName = '';
+  String _displayAvatar = '';
+  bool _isLoadingUserData = true;
+
   @override
   void initState() {
     super.initState();
+    _loadUserData(); // Load real user data
     _ensureChatExists();
     _markAllAsRead();
+  }
+
+  // New method to load real user data from Firestore
+  Future<void> _loadUserData() async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.otherUserId)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        setState(() {
+          _displayName =
+              userData?['name'] ??
+              userData?['username'] ??
+              widget.otherUserName;
+          _displayAvatar =
+              userData?['avatar'] ??
+              userData?['profileImage'] ??
+              widget.otherUserAvatar;
+          _isLoadingUserData = false;
+        });
+      } else {
+        // Fallback to passed values if user document doesn't exist
+        setState(() {
+          _displayName = widget.otherUserName;
+          _displayAvatar = widget.otherUserAvatar;
+          _isLoadingUserData = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
+      // Fallback to passed values on error
+      setState(() {
+        _displayName = widget.otherUserName;
+        _displayAvatar = widget.otherUserAvatar;
+        _isLoadingUserData = false;
+      });
+    }
   }
 
   @override
@@ -44,37 +93,42 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  // Chat document create karein agar exist nahi karta
   Future<void> _ensureChatExists() async {
     try {
-      await _chatService.getOrCreateChat(
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.getOrCreateChat(
         currentUserId: widget.currentUserId,
         currentUserName: widget.currentUserName,
         otherUserId: widget.otherUserId,
-        otherUserName: widget.otherUserName,
-        otherUserAvatar: widget.otherUserAvatar,
+        otherUserName: _displayName.isNotEmpty
+            ? _displayName
+            : widget.otherUserName,
+        otherUserAvatar: _displayAvatar.isNotEmpty
+            ? _displayAvatar
+            : widget.otherUserAvatar,
       );
     } catch (e) {
       debugPrint('Error ensuring chat exists: $e');
     }
   }
 
-  // Screen open hone par sare messages read mark karein
   Future<void> _markAllAsRead() async {
     try {
-      await _chatService.markAllAsRead(widget.chatId, widget.currentUserId);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.markAsRead(widget.chatId, widget.currentUserId);
     } catch (e) {
       debugPrint('Error marking messages as read: $e');
     }
   }
 
-  // Message send karein
   Future<void> _sendMessage() async {
     final text = msgCtrl.text.trim();
     if (text.isEmpty) return;
 
     try {
-      await _chatService.sendMessage(
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
+      await chatProvider.sendMessage(
         chatId: widget.chatId,
         senderId: widget.currentUserId,
         senderName: widget.currentUserName,
@@ -106,16 +160,21 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onTyping(String text) {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
     if (!_isTyping && text.isNotEmpty) {
       setState(() => _isTyping = true);
+      chatProvider.setTypingStatus(widget.chatId, widget.currentUserId, true);
     } else if (_isTyping && text.isEmpty) {
       setState(() => _isTyping = false);
+      chatProvider.setTypingStatus(widget.chatId, widget.currentUserId, false);
     }
   }
 
   Future<void> _deleteMessage(String messageId) async {
     try {
-      await _chatService.deleteMessage(widget.chatId, messageId);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.deleteMessage(widget.chatId, messageId);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -132,7 +191,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _clearChat() async {
     try {
-      await _chatService.clearChat(widget.chatId);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.clearChat(widget.chatId);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -155,7 +215,7 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
       body: Column(
         children: [
-          // Custom App Bar
+          // Custom App Bar with real user data
           SafeArea(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -175,10 +235,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   CircleAvatar(
-                    backgroundImage: AssetImage(widget.otherUserAvatar),
+                    backgroundImage: _displayAvatar.isNotEmpty
+                        ? AssetImage(_displayAvatar)
+                        : null,
                     radius: 18,
                     onBackgroundImageError: (_, __) {},
-                    child: widget.otherUserAvatar.isEmpty
+                    child: _displayAvatar.isEmpty
                         ? const Icon(Icons.person)
                         : null,
                   ),
@@ -188,18 +250,32 @@ class _ChatScreenState extends State<ChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.otherUserName,
+                          _isLoadingUserData
+                              ? 'Loading...'
+                              : (_displayName.isNotEmpty
+                                    ? _displayName
+                                    : 'User'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          'Tap to view profile',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
+                        Consumer<ChatProvider>(
+                          builder: (context, chatProvider, child) {
+                            final isTyping = chatProvider.isUserTyping(
+                              widget.otherUserId,
+                            );
+                            return Text(
+                              isTyping ? 'typing...' : 'Tap to view profile',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isTyping
+                                    ? theme.colorScheme.primary
+                                    : Colors.grey.shade600,
+                                fontStyle: isTyping ? FontStyle.italic : null,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -259,16 +335,6 @@ class _ChatScreenState extends State<ChatScreen> {
                             style: TextStyle(
                               color: Colors.red[600],
                               fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'ChatId: ${widget.chatId}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 11,
-                              fontFamily: 'monospace',
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -616,125 +682,5 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ChatService class
-class ChatService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  String getChatId(String userId1, String userId2) {
-    List<String> ids = [userId1, userId2];
-    ids.sort();
-    return '${ids[0]}_${ids[1]}';
-  }
-
-  Future<String> getOrCreateChat({
-    required String currentUserId,
-    required String currentUserName,
-    required String otherUserId,
-    required String otherUserName,
-    String otherUserAvatar = 'assets/images/avatar.png',
-  }) async {
-    final chatId = getChatId(currentUserId, otherUserId);
-    final chatDoc = await _firestore.collection('chats').doc(chatId).get();
-
-    if (!chatDoc.exists) {
-      await _firestore.collection('chats').doc(chatId).set({
-        'chatId': chatId,
-        'participants': [currentUserId, otherUserId],
-        'participantNames': {
-          currentUserId: currentUserName,
-          otherUserId: otherUserName,
-        },
-        'participantAvatars': {
-          currentUserId: 'assets/images/avatar.png',
-          otherUserId: otherUserAvatar,
-        },
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastMessage': '',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-        'lastMessageSenderId': '',
-      });
-    }
-    return chatId;
-  }
-
-  Future<void> sendMessage({
-    required String chatId,
-    required String senderId,
-    required String senderName,
-    required String content,
-  }) async {
-    await _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .add({
-          'senderId': senderId,
-          'senderName': senderName,
-          'content': content,
-          'timestamp': FieldValue.serverTimestamp(),
-          'isRead': false,
-        });
-
-    await _firestore.collection('chats').doc(chatId).update({
-      'lastMessage': content,
-      'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastMessageSenderId': senderId,
-    });
-  }
-
-  Stream<QuerySnapshot> getMessagesStream(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots();
-  }
-
-  Future<void> deleteMessage(String chatId, String messageId) async {
-    await _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .doc(messageId)
-        .delete();
-  }
-
-  Future<void> markAllAsRead(String chatId, String currentUserId) async {
-    final unreadMessages = await _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .where('senderId', isNotEqualTo: currentUserId)
-        .where('isRead', isEqualTo: false)
-        .get();
-
-    final batch = _firestore.batch();
-    for (var doc in unreadMessages.docs) {
-      batch.update(doc.reference, {'isRead': true});
-    }
-    await batch.commit();
-  }
-
-  Future<void> clearChat(String chatId) async {
-    final messages = await _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .get();
-
-    final batch = _firestore.batch();
-    for (var doc in messages.docs) {
-      batch.delete(doc.reference);
-    }
-    await batch.commit();
-
-    await _firestore.collection('chats').doc(chatId).update({
-      'lastMessage': '',
-      'lastMessageSenderId': '',
-    });
   }
 }

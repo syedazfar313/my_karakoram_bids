@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart';
+import '../../core/services/chat_service.dart';
 import 'chat_screen.dart';
-
-// Service import karein
-// import '../services/chat_service.dart';
 
 class MessagesListScreen extends StatefulWidget {
   final String userType; // "Client" or "Contractor"
@@ -18,7 +18,6 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Current user ID - Firebase Auth se lena
   late final String currentUserId;
   late final String currentUserName;
 
@@ -29,13 +28,11 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
 
-    // Initialize user ID
     final auth = FirebaseAuth.instance;
     if (auth.currentUser != null) {
       currentUserId = auth.currentUser!.uid;
       currentUserName = auth.currentUser!.displayName ?? 'User';
     } else {
-      // Demo user for testing
       currentUserId = 'demo_user_${DateTime.now().millisecondsSinceEpoch}';
       currentUserName = 'Demo User';
     }
@@ -181,11 +178,11 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final chatProvider = Provider.of<ChatProvider>(context);
 
     return Scaffold(
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -213,21 +210,15 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
             ),
           ),
 
-          // Messages List - Real-time Stream
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _chatService.getUserChatsStream(currentUserId),
               builder: (context, snapshot) {
-                // Debug info
-                print('🔍 Stream state: ${snapshot.connectionState}');
-                print('🆔 Querying with userId: $currentUserId');
-
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasError) {
-                  print('❌ Stream error: ${snapshot.error}');
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -254,15 +245,6 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'User ID: $currentUserId',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () => setState(() {}),
@@ -274,9 +256,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                 }
 
                 final chatDocs = snapshot.data?.docs ?? [];
-                print('💬 Found ${chatDocs.length} chats');
 
-                // Convert to list of maps
                 final allChats = chatDocs.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final otherUser = _chatService.getOtherUserInfo(
@@ -292,9 +272,17 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                     'timestamp': data['lastMessageTime'],
                     'avatar': otherUser['avatar']!,
                     'otherUserId': otherUser['userId']!,
-                    'unreadCount': 0,
+                    'unreadCount': chatProvider.unreadCounts[doc.id] ?? 0,
                   };
                 }).toList();
+
+                // Update unread counts
+                for (var chat in allChats) {
+                  chatProvider.updateUnreadCount(
+                    chat['chatId']!,
+                    currentUserId,
+                  );
+                }
 
                 final filteredChats = _filterChats(allChats);
 
@@ -428,48 +416,5 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
         );
       },
     );
-  }
-}
-
-// ChatService class - Same as before
-class ChatService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  String getChatId(String userId1, String userId2) {
-    List<String> ids = [userId1, userId2];
-    ids.sort();
-    return '${ids[0]}_${ids[1]}';
-  }
-
-  Stream<QuerySnapshot> getUserChatsStream(String userId) {
-    return _firestore
-        .collection('chats')
-        .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots();
-  }
-
-  Map<String, String> getOtherUserInfo(
-    Map<String, dynamic> chatData,
-    String currentUserId,
-  ) {
-    final participants = List<String>.from(chatData['participants'] ?? []);
-    final otherUserId = participants.firstWhere(
-      (id) => id != currentUserId,
-      orElse: () => '',
-    );
-
-    final participantNames = Map<String, dynamic>.from(
-      chatData['participantNames'] ?? {},
-    );
-    final participantAvatars = Map<String, dynamic>.from(
-      chatData['participantAvatars'] ?? {},
-    );
-
-    return {
-      'userId': otherUserId,
-      'name': participantNames[otherUserId] ?? 'Unknown User',
-      'avatar': participantAvatars[otherUserId] ?? 'assets/images/avatar.png',
-    };
   }
 }

@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Apna message model import karein
-// import '../models/message.dart';
-
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -130,21 +127,26 @@ class ChatService {
     }
   }
 
-  // All messages ko read mark karein
+  // All messages ko read mark karein - SIMPLIFIED VERSION (No index needed)
   Future<void> markAllAsRead(String chatId, String currentUserId) async {
     try {
-      final unreadMessages = await _firestore
+      // Get all messages first, then filter in memory
+      final allMessages = await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
-          .where('senderId', isNotEqualTo: currentUserId)
-          .where('isRead', isEqualTo: false)
           .get();
 
       final batch = _firestore.batch();
-      for (var doc in unreadMessages.docs) {
-        batch.update(doc.reference, {'isRead': true});
+
+      for (var doc in allMessages.docs) {
+        final data = doc.data();
+        // Filter in app: not sent by current user AND not read
+        if (data['senderId'] != currentUserId && data['isRead'] == false) {
+          batch.update(doc.reference, {'isRead': true});
+        }
       }
+
       await batch.commit();
     } catch (e) {
       throw Exception('Error marking all as read: $e');
@@ -176,18 +178,26 @@ class ChatService {
     }
   }
 
-  // Unread count
+  // Unread count - SIMPLIFIED VERSION (No index needed)
   Future<int> getUnreadCount(String chatId, String currentUserId) async {
     try {
-      final unreadMessages = await _firestore
+      // Get all messages first, then filter in memory
+      final allMessages = await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
-          .where('senderId', isNotEqualTo: currentUserId)
-          .where('isRead', isEqualTo: false)
           .get();
 
-      return unreadMessages.docs.length;
+      int unreadCount = 0;
+      for (var doc in allMessages.docs) {
+        final data = doc.data();
+        // Count messages not sent by current user AND not read
+        if (data['senderId'] != currentUserId && data['isRead'] == false) {
+          unreadCount++;
+        }
+      }
+
+      return unreadCount;
     } catch (e) {
       return 0;
     }
