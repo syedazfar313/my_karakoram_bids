@@ -104,6 +104,69 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
     }
   }
 
+  // NEW: Load real user name from Firestore
+  Future<String> _getUserRealName(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        return userData?['name'] ?? userData?['username'] ?? 'Unknown User';
+      }
+    } catch (e) {
+      debugPrint('Error loading user name: $e');
+    }
+    return 'Unknown User';
+  }
+
+  // NEW: Open chat with real user data
+  Future<void> _openChat(Map<String, dynamic> chat) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Load real user name
+      final realName = await _getUserRealName(chat['otherUserId']!);
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Open chat with real name
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              chatId: chat["chatId"]!,
+              otherUserId: chat["otherUserId"]!,
+              otherUserName: realName, // Real name
+              otherUserAvatar: chat["avatar"]!,
+              currentUserId: currentUserId,
+              currentUserName: currentUserName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Show error
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Widget _buildEmptyState() {
     if (_searchQuery.isNotEmpty) {
       return Center(
@@ -398,21 +461,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
               ],
             ],
           ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChatScreen(
-                  chatId: chat["chatId"]!,
-                  otherUserId: chat["otherUserId"]!,
-                  otherUserName: chat["name"]!,
-                  otherUserAvatar: chat["avatar"]!,
-                  currentUserId: currentUserId,
-                  currentUserName: currentUserName,
-                ),
-              ),
-            );
-          },
+          onTap: () => _openChat(chat), // UPDATED: Use new method
         );
       },
     );

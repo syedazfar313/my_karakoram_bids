@@ -1,3 +1,4 @@
+// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -25,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ✅ UPDATED: Admin routing support
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.clearError();
@@ -57,12 +59,16 @@ class _LoginScreenState extends State<LoginScreen> {
         debugPrint('User Email: ${user.email}');
         debugPrint('User Role: ${user.role}');
         debugPrint('User Role String: ${user.role.toString()}');
+        debugPrint('Is Admin: ${user.role == UserRole.admin}'); // ✅ ADDED
         debugPrint('Is Contractor: ${user.role == UserRole.contractor}');
         debugPrint('Is Client: ${user.role == UserRole.client}');
 
-        // Determine route based on role
+        // ✅ UPDATED: Determine route based on role (ADMIN FIRST!)
         final String route;
-        if (user.role == UserRole.contractor) {
+        if (user.role == UserRole.admin) {
+          route = AppRoutes.adminHome;
+          debugPrint('✅ Navigating to: ADMIN HOME');
+        } else if (user.role == UserRole.contractor) {
           route = AppRoutes.contractorHome;
           debugPrint('✅ Navigating to: CONTRACTOR HOME');
         } else {
@@ -78,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('❌ Login error: $e');
+      // Error already shown by AuthProvider
     }
   }
 

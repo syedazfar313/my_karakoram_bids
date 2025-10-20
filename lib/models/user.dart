@@ -1,4 +1,5 @@
-enum UserRole { client, contractor }
+// lib/models/user.dart
+enum UserRole { client, contractor, admin } // ✅ Admin role added
 
 class UserModel {
   String id;
@@ -10,6 +11,7 @@ class UserModel {
   String experience; // Contractor only
   List<String> completedProjects; // Contractor only
   String location;
+  bool isApproved; // ✅ Admin approval status
 
   UserModel({
     required this.id,
@@ -21,6 +23,7 @@ class UserModel {
     this.experience = '',
     List<String>? completedProjects,
     this.location = '',
+    this.isApproved = true, // ✅ Default approved
   }) : completedProjects = completedProjects ?? [];
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -28,9 +31,7 @@ class UserModel {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      role: json['role'] == 'contractor'
-          ? UserRole.contractor
-          : UserRole.client,
+      role: _parseRole(json['role']),
       phone: json['phone'] ?? '',
       imageUrl: json['imageUrl'] ?? '',
       experience: json['experience'] ?? '',
@@ -40,7 +41,15 @@ class UserModel {
               .toList() ??
           [],
       location: json['location'] ?? '',
+      isApproved: json['isApproved'] ?? true,
     );
+  }
+
+  // ✅ Role parsing helper
+  static UserRole _parseRole(dynamic role) {
+    if (role == 'contractor') return UserRole.contractor;
+    if (role == 'admin') return UserRole.admin;
+    return UserRole.client;
   }
 
   Map<String, dynamic> toJson() {
@@ -48,12 +57,17 @@ class UserModel {
       'id': id,
       'name': name,
       'email': email,
-      'role': role == UserRole.contractor ? 'contractor' : 'client',
+      'role': role == UserRole.contractor
+          ? 'contractor'
+          : role == UserRole.admin
+          ? 'admin'
+          : 'client',
       'phone': phone,
       'imageUrl': imageUrl,
       'experience': experience,
       'completedProjects': completedProjects,
       'location': location,
+      'isApproved': isApproved,
     };
   }
 
@@ -66,6 +80,7 @@ class UserModel {
     String? experience,
     List<String>? completedProjects,
     String? location,
+    bool? isApproved,
   }) {
     if (name != null) this.name = name;
     if (email != null) this.email = email;
@@ -74,5 +89,17 @@ class UserModel {
     if (experience != null) this.experience = experience;
     if (completedProjects != null) this.completedProjects = completedProjects;
     if (location != null) this.location = location;
+    if (isApproved != null) this.isApproved = isApproved;
+  }
+
+  // Helper methods
+  bool get isClient => role == UserRole.client;
+  bool get isContractor => role == UserRole.contractor;
+  bool get isAdmin => role == UserRole.admin;
+
+  String get roleString {
+    if (role == UserRole.contractor) return 'Contractor';
+    if (role == UserRole.admin) return 'Admin';
+    return 'Client';
   }
 }

@@ -36,7 +36,7 @@ class ChatService {
             otherUserId: otherUserAvatar,
           },
           'createdAt': FieldValue.serverTimestamp(),
-          'lastMessage': '',
+          'lastMessage': '', // Empty for new chats
           'lastMessageTime': FieldValue.serverTimestamp(),
           'lastMessageSenderId': '',
         });
@@ -90,13 +90,23 @@ class ChatService {
         .snapshots();
   }
 
-  // User ke sare chats - Real-time
+  // ✅ FIXED: User ke sare chats - Real-time WITH FALLBACK
   Stream<QuerySnapshot> getUserChatsStream(String userId) {
-    return _firestore
-        .collection('chats')
-        .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots();
+    try {
+      // Try with orderBy first (requires composite index)
+      return _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .orderBy('lastMessageTime', descending: true)
+          .snapshots();
+    } catch (e) {
+      // ✅ FALLBACK: If index missing, fetch without orderBy
+      print('⚠️ Composite index missing, using fallback query');
+      return _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .snapshots();
+    }
   }
 
   // Message delete karein
@@ -130,7 +140,6 @@ class ChatService {
   // All messages ko read mark karein - SIMPLIFIED VERSION (No index needed)
   Future<void> markAllAsRead(String chatId, String currentUserId) async {
     try {
-      // Get all messages first, then filter in memory
       final allMessages = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -141,7 +150,6 @@ class ChatService {
 
       for (var doc in allMessages.docs) {
         final data = doc.data();
-        // Filter in app: not sent by current user AND not read
         if (data['senderId'] != currentUserId && data['isRead'] == false) {
           batch.update(doc.reference, {'isRead': true});
         }
@@ -181,7 +189,6 @@ class ChatService {
   // Unread count - SIMPLIFIED VERSION (No index needed)
   Future<int> getUnreadCount(String chatId, String currentUserId) async {
     try {
-      // Get all messages first, then filter in memory
       final allMessages = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -191,7 +198,6 @@ class ChatService {
       int unreadCount = 0;
       for (var doc in allMessages.docs) {
         final data = doc.data();
-        // Count messages not sent by current user AND not read
         if (data['senderId'] != currentUserId && data['isRead'] == false) {
           unreadCount++;
         }

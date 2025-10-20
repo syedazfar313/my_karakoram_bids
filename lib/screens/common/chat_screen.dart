@@ -33,7 +33,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   bool _isTyping = false;
 
-  // Add these variables to store real user data
   String _displayName = '';
   String _displayAvatar = '';
   bool _isLoadingUserData = true;
@@ -41,12 +40,18 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // Load real user data
+    _loadUserData();
     _ensureChatExists();
     _markAllAsRead();
   }
 
-  // New method to load real user data from Firestore
+  @override
+  void dispose() {
+    msgCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserData() async {
     try {
       final userDoc = await FirebaseFirestore.instance
@@ -68,7 +73,6 @@ class _ChatScreenState extends State<ChatScreen> {
           _isLoadingUserData = false;
         });
       } else {
-        // Fallback to passed values if user document doesn't exist
         setState(() {
           _displayName = widget.otherUserName;
           _displayAvatar = widget.otherUserAvatar;
@@ -77,20 +81,12 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
-      // Fallback to passed values on error
       setState(() {
         _displayName = widget.otherUserName;
         _displayAvatar = widget.otherUserAvatar;
         _isLoadingUserData = false;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    msgCtrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _ensureChatExists() async {
@@ -215,7 +211,6 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: theme.colorScheme.surfaceContainerHighest,
       body: Column(
         children: [
-          // Custom App Bar with real user data
           SafeArea(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -299,7 +294,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Messages Area - Real-time Stream
+          // Messages Area - ✅ FIXED: Now displays sender name
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _chatService.getMessagesStream(widget.chatId),
@@ -363,7 +358,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                // Auto scroll to bottom
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _scrollToBottom();
                 });
@@ -379,12 +373,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     final isMe =
                         messageData['senderId'] == widget.currentUserId;
 
+                    // ✅ FIX: Pass senderName to MessageBubble
                     return MessageBubble(
                       messageId: messageDoc.id,
                       content: messageData['content'] ?? '',
+                      senderName:
+                          messageData['senderName'] ?? 'Unknown', // ✅ ADDED
                       timestamp: messageData['timestamp'],
                       isRead: messageData['isRead'] ?? false,
                       isMe: isMe,
+                      showSenderName:
+                          !isMe, // ✅ ADDED: Only show for other user
                       onLongPress: () => _showMessageOptions(
                         messageDoc.id,
                         isMe,
@@ -560,22 +559,26 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// Message Bubble Widget
+// ✅ FIXED: Message Bubble Widget with Sender Name
 class MessageBubble extends StatelessWidget {
   final String messageId;
   final String content;
+  final String senderName; // ✅ ADDED
   final dynamic timestamp;
   final bool isRead;
   final bool isMe;
+  final bool showSenderName; // ✅ ADDED
   final VoidCallback? onLongPress;
 
   const MessageBubble({
     super.key,
     required this.messageId,
     required this.content,
+    required this.senderName, // ✅ ADDED
     required this.timestamp,
     required this.isRead,
     required this.isMe,
+    this.showSenderName = false, // ✅ ADDED
     this.onLongPress,
   });
 
@@ -616,68 +619,94 @@ class MessageBubble extends StatelessWidget {
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.surface,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: isMe
-                    ? const Radius.circular(18)
-                    : const Radius.circular(4),
-                bottomRight: isMe
-                    ? const Radius.circular(4)
-                    : const Radius.circular(18),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 2,
-                  color: Colors.black.withOpacity(0.1),
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  content,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.3,
-                    color: isMe ? Colors.white : theme.colorScheme.onSurface,
+          child: Column(
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              // ✅ ADDED: Show sender name for other user's messages
+              if (showSenderName && !isMe)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, bottom: 4),
+                  child: Text(
+                    senderName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTime(timestamp),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isMe
-                            ? Colors.white.withOpacity(0.8)
-                            : theme.colorScheme.onSurface.withOpacity(0.6),
-                      ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isMe
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(18),
+                    topRight: const Radius.circular(18),
+                    bottomLeft: isMe
+                        ? const Radius.circular(18)
+                        : const Radius.circular(4),
+                    bottomRight: isMe
+                        ? const Radius.circular(4)
+                        : const Radius.circular(18),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 2,
+                      color: Colors.black.withOpacity(0.1),
+                      offset: const Offset(0, 1),
                     ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        isRead ? Icons.done_all : Icons.done,
-                        size: 14,
-                        color: isRead
-                            ? Colors.blue.shade200
-                            : Colors.white.withOpacity(0.8),
-                      ),
-                    ],
                   ],
                 ),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      content,
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.3,
+                        color: isMe
+                            ? Colors.white
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatTime(timestamp),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isMe
+                                ? Colors.white.withOpacity(0.8)
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            isRead ? Icons.done_all : Icons.done,
+                            size: 14,
+                            color: isRead
+                                ? Colors.blue.shade200
+                                : Colors.white.withOpacity(0.8),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

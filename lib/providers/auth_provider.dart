@@ -1,3 +1,4 @@
+// lib/providers/auth_provider.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -50,9 +51,16 @@ class AuthProvider with ChangeNotifier {
       if (doc.exists) {
         final data = doc.data()!;
         final roleString = data['role'] as String? ?? 'client';
-        final role = roleString == 'contractor'
-            ? UserRole.contractor
-            : UserRole.client;
+
+        // ✅ UPDATED: Parse admin role
+        UserRole role;
+        if (roleString == 'admin') {
+          role = UserRole.admin;
+        } else if (roleString == 'contractor') {
+          role = UserRole.contractor;
+        } else {
+          role = UserRole.client;
+        }
 
         _user = UserModel(
           id: firebaseUser.uid,
@@ -64,6 +72,7 @@ class AuthProvider with ChangeNotifier {
           experience: data['experience'] ?? '',
           completedProjects: List<String>.from(data['completedProjects'] ?? []),
           location: data['location'] ?? '',
+          isApproved: data['isApproved'] ?? true, // ✅ ADDED
         );
 
         debugPrint('========== USER LOADED FROM FIRESTORE ==========');
@@ -71,8 +80,10 @@ class AuthProvider with ChangeNotifier {
         debugPrint('User Email: ${_user!.email}');
         debugPrint('Role from Firestore: $roleString');
         debugPrint('User Role Enum: ${_user!.role}');
+        debugPrint('Is Admin: ${_user!.role == UserRole.admin}'); // ✅ ADDED
         debugPrint('Is Contractor: ${_user!.role == UserRole.contractor}');
         debugPrint('Is Client: ${_user!.role == UserRole.client}');
+        debugPrint('Is Approved: ${_user!.isApproved}'); // ✅ ADDED
       } else {
         debugPrint('No Firestore document found, creating default user');
         _createDefaultUser(firebaseUser);
@@ -94,14 +105,21 @@ class AuthProvider with ChangeNotifier {
       experience: '',
       completedProjects: [],
       location: '',
+      isApproved: true, // ✅ ADDED
     );
   }
 
   Future<void> _saveUserToFirestore(UserModel user) async {
     try {
-      final roleString = user.role == UserRole.contractor
-          ? 'contractor'
-          : 'client';
+      // ✅ UPDATED: Save admin role
+      String roleString;
+      if (user.role == UserRole.admin) {
+        roleString = 'admin';
+      } else if (user.role == UserRole.contractor) {
+        roleString = 'contractor';
+      } else {
+        roleString = 'client';
+      }
 
       debugPrint('========== SAVING USER TO FIRESTORE ==========');
       debugPrint('User ID: ${user.id}');
@@ -117,6 +135,7 @@ class AuthProvider with ChangeNotifier {
         'experience': user.experience,
         'completedProjects': user.completedProjects,
         'location': user.location,
+        'isApproved': user.isApproved, // ✅ ADDED
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -221,6 +240,7 @@ class AuthProvider with ChangeNotifier {
         experience: '',
         completedProjects: [],
         location: '',
+        isApproved: true, // ✅ ADDED - Default approved
       );
 
       await _saveUserToFirestore(_user!);
@@ -243,6 +263,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // ✅ UPDATED: signInWithEmail with admin support
   Future<void> signInWithEmail({
     required String email,
     required String password,
@@ -269,8 +290,19 @@ class AuthProvider with ChangeNotifier {
 
       debugPrint('========== LOGIN SUCCESS ==========');
       debugPrint('User Role: ${_user?.role}');
+      debugPrint('Is Admin: ${_user?.role == UserRole.admin}'); // ✅ ADDED
       debugPrint('Is Contractor: ${_user?.role == UserRole.contractor}');
       debugPrint('Is Client: ${_user?.role == UserRole.client}');
+
+      // ✅ ADDED: Check if user is approved (except admin)
+      if (_user != null &&
+          _user!.role != UserRole.admin &&
+          !_user!.isApproved) {
+        await signOut();
+        throw Exception(
+          'Your account has been suspended. Please contact admin.',
+        );
+      }
 
       _setState(AuthState.authenticated);
     } on FirebaseAuthException catch (e) {
