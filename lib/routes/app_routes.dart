@@ -1,4 +1,5 @@
 // lib/routes/app_routes.dart
+
 import 'package:flutter/material.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -82,9 +83,7 @@ class AppRoutes {
             otherUserId: args['otherUserId'] ?? '',
             otherUserName: args['otherUserName'] ?? args['userName'] ?? 'User',
             otherUserAvatar:
-                args['otherUserAvatar'] ??
-                args['userImage'] ??
-                'assets/images/avatar.png',
+                args['otherUserAvatar'] ?? 'assets/images/avatar.png',
             currentUserId: args['currentUserId'] ?? 'demo_user',
             currentUserName: args['currentUserName'] ?? 'You',
           ),
