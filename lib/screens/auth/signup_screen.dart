@@ -84,9 +84,6 @@ class _SignupScreenState extends State<SignupScreen> {
         if (user.role == UserRole.contractor) {
           route = AppRoutes.contractorHome;
           debugPrint('Navigating to: CONTRACTOR HOME');
-        } else if (user.role == UserRole.supplier) {
-          route = AppRoutes.supplierHome;
-          debugPrint('Navigating to: SUPPLIER HOME');
         } else {
           route = AppRoutes.clientHome;
           debugPrint('Navigating to: CLIENT HOME');
@@ -278,7 +275,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Role dropdown - CONTRACTOR, SUPPLIER, CLIENT
+                              // Role dropdown - CONTRACTOR, CLIENT only
                               DropdownButtonFormField<UserRole>(
                                 value: selectedRole,
                                 decoration: _inputDecoration(
@@ -290,10 +287,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                   DropdownMenuItem(
                                     value: UserRole.contractor,
                                     child: Text("Contractor"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: UserRole.supplier,
-                                    child: Text("Supplier"),
                                   ),
                                   DropdownMenuItem(
                                     value: UserRole.client,

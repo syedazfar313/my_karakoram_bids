@@ -1,12 +1,13 @@
+// lib/screens/client/client_home.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Added for ProjectsProvider
-import '../../../models/user.dart';
-import '../../../widgets/dashboard_shell.dart';
-import '../../../widgets/custom_drawer.dart';
-import '../../../providers/projects_provider.dart'; // Added import
+import 'package:provider/provider.dart';
+import '../../models/user.dart';
+import '../../widgets/dashboard_shell.dart';
+import '../../widgets/custom_drawer.dart';
+import '../../providers/projects_provider.dart';
 import 'post_project.dart';
 import 'my_projects_page.dart';
-import '../../../screens/common/messages_list_screen.dart';
+import '../common/messages_list_screen.dart';
 
 class ClientHome extends StatefulWidget {
   final UserModel user;
@@ -19,17 +20,14 @@ class ClientHome extends StatefulWidget {
 
 class _ClientHomeState extends State<ClientHome> {
   void _addProject(Map<String, dynamic> project) {
-    // Add client ID to project
     project['clientId'] = widget.user.id;
 
-    // Use global provider instead of local state
     final projectsProvider = Provider.of<ProjectsProvider>(
       context,
       listen: false,
     );
     projectsProvider.addProject(project);
 
-    // Show success message with enhanced info
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Column(
@@ -52,50 +50,35 @@ class _ClientHomeState extends State<ClientHome> {
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'View',
-          textColor: Colors.white,
-          onPressed: () {
-            // Switch to My Projects tab to see the posted project
-            // This would require tab controller access
-          },
-        ),
       ),
     );
 
-    // Debug info
     debugPrint(
       'Client ${widget.user.name} posted project: ${project['title']}',
     );
-    debugPrint('Project has image: ${project['planImage'] != null}');
   }
 
   @override
   Widget build(BuildContext context) {
     return DashboardShell(
       pages: [
-        // My Projects Page with Provider Consumer
+        // Tab 1: My Projects
         Scaffold(
           drawer: const CustomDrawer(),
           body: Consumer<ProjectsProvider>(
             builder: (context, projectsProvider, child) {
-              // Get projects for current client
               final clientProjects = projectsProvider.getProjectsByClientId(
                 widget.user.id,
               );
-
-              // Debug info
-              debugPrint('Client projects count: ${clientProjects.length}');
-
               return MyProjectsPage(projects: clientProjects);
             },
           ),
         ),
 
-        // Post Project Page
+        // Tab 2: Post Project
         PostProjectScreen(onProjectPosted: _addProject),
 
-        // Messages Page
+        // Tab 3: Messages
         const MessagesListScreen(userType: "Client"),
       ],
       items: const [

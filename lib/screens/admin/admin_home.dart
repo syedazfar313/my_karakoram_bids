@@ -1,9 +1,8 @@
 // lib/screens/admin/admin_home.dart
 import 'package:flutter/material.dart';
-//import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/user.dart';
-import '../../../widgets/dashboard_shell.dart';
-import '../../../widgets/custom_drawer.dart';
+import '../../models/user.dart';
+import '../../widgets/dashboard_shell.dart';
+import '../../widgets/custom_drawer.dart';
 import 'admin_dashboard.dart';
 import 'manage_users.dart';
 import 'manage_projects.dart';

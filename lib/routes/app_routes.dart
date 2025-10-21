@@ -7,7 +7,6 @@ import '../screens/auth/forget_password_screen.dart';
 import '../screens/client/client_home.dart';
 import '../screens/contractor/contractor_home.dart';
 import '../screens/admin/admin_home.dart';
-import '../screens/supplier/supplier_home.dart'; // ✅ NEW IMPORT
 import '../screens/client/post_project.dart';
 import '../screens/contractor/browse_projects.dart';
 import '../screens/contractor/project_details.dart';
@@ -22,7 +21,6 @@ class AppRoutes {
   static const String clientHome = '/client/home';
   static const String contractorHome = '/contractor/home';
   static const String adminHome = '/admin/home';
-  static const String supplierHome = '/supplier/home'; // ✅ NEW ROUTE
   static const String postProject = '/client/post-project';
   static const String browseProjects = '/contractor/browse-projects';
   static const String projectDetails = '/contractor/project-details';
@@ -53,11 +51,6 @@ class AppRoutes {
       case adminHome:
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(builder: (_) => AdminHome(user: user));
-
-      // ✅ NEW SUPPLIER ROUTE
-      case supplierHome:
-        final user = settings.arguments as UserModel;
-        return MaterialPageRoute(builder: (_) => SupplierHome(user: user));
 
       case postProject:
         return MaterialPageRoute(
