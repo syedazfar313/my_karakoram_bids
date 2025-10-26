@@ -15,7 +15,7 @@ class ManageBidsPage extends StatefulWidget {
 class _ManageBidsPageState extends State<ManageBidsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _filterStatus = 'all'; // all, Pending, Accepted, Rejected
+  String _filterStatus = 'all';
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Bid'),
         content: Text(
-          'Are you sure you want to delete bid from $contractorName?',
+          'Are you sure you want to permanently delete bid from $contractorName? This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -58,20 +58,24 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
     try {
       await FirebaseFirestore.instance.collection('bids').doc(bidId).delete();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bid deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bid deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      debugPrint('Error deleting bid: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete bid: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -79,22 +83,27 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
     try {
       await FirebaseFirestore.instance.collection('bids').doc(bidId).update({
         'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bid status updated to $newStatus'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bid status updated to $newStatus successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      debugPrint('Error updating bid status: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -115,12 +124,10 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search & Filter
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Search Bar
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -139,10 +146,7 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
                   fillColor: Colors.grey.shade50,
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Status Filter
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -157,7 +161,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
             ],
           ),
         ),
-
         Expanded(child: _buildBidsList()),
       ],
     );
@@ -175,6 +178,12 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
         },
         selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
         checkmarkColor: Theme.of(context).colorScheme.primary,
+        labelStyle: TextStyle(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.black87,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
     );
   }
@@ -197,9 +206,13 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
                 const SizedBox(height: 16),
-                Text('Error: ${snapshot.error}'),
+                Text(
+                  'Error loading bids: ${snapshot.error}',
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           );
@@ -207,7 +220,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
 
         var bids = snapshot.data?.docs ?? [];
 
-        // Apply search filter
         if (_searchQuery.isNotEmpty) {
           bids = bids.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
@@ -234,7 +246,7 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
                   _searchQuery.isNotEmpty
                       ? 'No bids found for "$_searchQuery"'
                       : 'No bids found',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ],
             ),
@@ -243,7 +255,7 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            setState(() {}); // Trigger rebuild
+            setState(() {});
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -271,7 +283,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
     final message = data['message'] ?? data['comment'] ?? '';
     final contractorId = data['contractorId'] ?? '';
     final projectId = data['projectId'] ?? '';
-
     final statusColor = _getStatusColor(status);
 
     return Card(
@@ -363,7 +374,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bid Details
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -384,7 +394,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
                     ],
                   ),
                 ),
-
                 if (message.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -410,19 +419,14 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
                     ),
                   ),
                 ],
-
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 12),
-
-                // Action Buttons
                 const Text(
                   'Admin Actions:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(height: 12),
-
-                // Status Update Buttons
                 if (status == 'Pending') ...[
                   Row(
                     children: [
@@ -453,8 +457,6 @@ class _ManageBidsPageState extends State<ManageBidsPage> {
                   ),
                   const SizedBox(height: 12),
                 ],
-
-                // Delete Button
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(

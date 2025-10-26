@@ -43,20 +43,28 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         'isApproved': !currentStatus,
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(currentStatus ? 'User suspended' : 'User approved'),
-            backgroundColor: currentStatus ? Colors.red : Colors.green,
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            currentStatus
+                ? 'User suspended successfully'
+                : 'User approved successfully',
           ),
-        );
-      }
+          backgroundColor: currentStatus ? Colors.red : Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      debugPrint('Error toggling user approval: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update user status: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -65,7 +73,9 @@ class _ManageUsersPageState extends State<ManageUsersPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete $userName?'),
+        content: Text(
+          'Are you sure you want to permanently delete $userName? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -83,29 +93,26 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     if (confirm != true) return;
 
     try {
-      // Delete user from Firestore
       await FirebaseFirestore.instance.collection('users').doc(userId).delete();
 
-      // Also delete user's data (projects/bids)
-      // Note: Implement cascade delete if needed
+      if (!mounted) return;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error deleting user: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Error deleting user: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete user: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -113,13 +120,12 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search Bar
         Padding(
           padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search users...',
+              hintText: 'Search users by name or email...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -135,8 +141,6 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             ),
           ),
         ),
-
-        // Tabs
         TabBar(
           controller: _tabController,
           tabs: const [
@@ -144,8 +148,6 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             Tab(text: 'Contractors'),
           ],
         ),
-
-        // Tab Views
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -171,12 +173,24 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading users: ${snapshot.error}',
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
         }
 
         final users = snapshot.data?.docs ?? [];
 
-        // Filter by search query
         final filteredUsers = users.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final name = (data['name'] ?? '').toString().toLowerCase();
@@ -209,7 +223,6 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           itemBuilder: (context, index) {
             final userDoc = filteredUsers[index];
             final userData = userDoc.data() as Map<String, dynamic>;
-
             return _buildUserCard(userDoc.id, userData, role);
           },
         );
@@ -223,7 +236,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     String role,
   ) {
     final name = userData['name'] ?? 'Unknown User';
-    final email = userData['email'] ?? '';
+    final email = userData['email'] ?? 'No email provided';
     final phone = userData['phone'] ?? 'No phone';
     final location = userData['location'] ?? 'No location';
     final isApproved = userData['isApproved'] ?? true;
@@ -232,8 +245,10 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: ExpansionTile(
         leading: CircleAvatar(
+          radius: 24,
           backgroundImage: imageUrl.isNotEmpty
               ? (imageUrl.startsWith('/') || imageUrl.startsWith('file://')
                         ? FileImage(File(imageUrl))
@@ -247,7 +262,10 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             Expanded(
               child: Text(
                 name,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             Container(
@@ -269,29 +287,46 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             ),
           ],
         ),
-        subtitle: Text(email),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            email,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          ),
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoRow(Icons.phone, 'Phone', phone),
-                const SizedBox(height: 8),
-                _buildInfoRow(Icons.location_on, 'Location', location),
-
-                if (role == 'contractor' && userData['experience'] != null) ...[
-                  const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.work,
-                    'Experience',
-                    userData['experience'],
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                ],
-
-                const Divider(height: 24),
-
-                // Action Buttons
+                  child: Column(
+                    children: [
+                      _buildInfoRow(Icons.phone, 'Phone', phone),
+                      const SizedBox(height: 8),
+                      _buildInfoRow(Icons.location_on, 'Location', location),
+                      if (role == 'contractor' &&
+                          userData['experience'] != null) ...[
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          Icons.work,
+                          'Experience',
+                          userData['experience'].toString(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -307,6 +342,9 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                           foregroundColor: isApproved
                               ? Colors.red
                               : Colors.green,
+                          side: BorderSide(
+                            color: isApproved ? Colors.red : Colors.green,
+                          ),
                         ),
                       ),
                     ),
@@ -318,6 +356,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                         label: const Text('Delete'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
                         ),
                       ),
                     ),
@@ -340,11 +379,15 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           '$label: ',
           style: TextStyle(
             fontWeight: FontWeight.w600,
+            fontSize: 13,
             color: Colors.grey[700],
           ),
         ),
         Expanded(
-          child: Text(value, style: const TextStyle(color: Colors.black87)),
+          child: Text(
+            value,
+            style: const TextStyle(color: Colors.black87, fontSize: 13),
+          ),
         ),
       ],
     );

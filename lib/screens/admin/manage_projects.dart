@@ -15,7 +15,7 @@ class ManageProjectsPage extends StatefulWidget {
 class _ManageProjectsPageState extends State<ManageProjectsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _filterStatus = 'all'; // all, active, completed, cancelled
+  String _filterStatus = 'all';
 
   @override
   void initState() {
@@ -38,7 +38,9 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Project'),
-        content: Text('Are you sure you want to delete "$projectTitle"?'),
+        content: Text(
+          'Are you sure you want to delete "$projectTitle"?\n\nThis will also delete all associated bids. This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -56,13 +58,11 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
     if (confirm != true) return;
 
     try {
-      // Delete project
       await FirebaseFirestore.instance
           .collection('projects')
           .doc(projectId)
           .delete();
 
-      // Delete all bids for this project
       final bidsSnapshot = await FirebaseFirestore.instance
           .collection('bids')
           .where('projectId', isEqualTo: projectId)
@@ -72,20 +72,24 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
         await doc.reference.delete();
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Project deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Project and associated bids deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      debugPrint('Error deleting project: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete project: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -99,20 +103,37 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Project status updated to $newStatus'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Project status updated to $newStatus successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      debugPrint('Error updating project status: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'completed':
+        return Colors.blue;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -120,16 +141,14 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search & Filter
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Search Bar
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search projects...',
+                  hintText: 'Search projects by title or description...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -144,10 +163,7 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                   fillColor: Colors.grey.shade50,
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Status Filter
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -162,8 +178,6 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
             ],
           ),
         ),
-
-        // Projects List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -172,7 +186,27 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading projects: ${snapshot.error}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
               }
 
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -181,7 +215,6 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
 
               var projects = snapshot.data!.docs;
 
-              // Apply filters
               if (_filterStatus != 'all') {
                 projects = projects.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
@@ -189,7 +222,6 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                 }).toList();
               }
 
-              // Apply search
               if (_searchQuery.isNotEmpty) {
                 projects = projects.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
@@ -203,7 +235,24 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
               }
 
               if (projects.isEmpty) {
-                return const Center(child: Text('No projects found'));
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.work_off, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchQuery.isNotEmpty
+                            ? 'No projects found for "$_searchQuery"'
+                            : 'No projects found',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               }
 
               return ListView.builder(
@@ -212,7 +261,6 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                 itemBuilder: (context, index) {
                   final project = projects[index];
                   final data = project.data() as Map<String, dynamic>;
-
                   return _buildProjectCard(project.id, data);
                 },
               );
@@ -253,25 +301,12 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
     final status = data['status'] ?? 'active';
     final budget = data['budget'] ?? 0;
     final clientName = data['clientName'] ?? 'Unknown';
-
-    Color statusColor;
-    switch (status) {
-      case 'active':
-        statusColor = Colors.green;
-        break;
-      case 'completed':
-        statusColor = Colors.blue;
-        break;
-      case 'cancelled':
-        statusColor = Colors.red;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
+    final statusColor = _getStatusColor(status);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -295,7 +330,7 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: statusColor),
                   ),
@@ -313,7 +348,11 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
             const SizedBox(height: 8),
             Text(
               description,
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 14,
+                height: 1.4,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -327,13 +366,17 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.attach_money, size: 16, color: Colors.grey.shade600),
+                Icon(
+                  Icons.attach_money,
+                  size: 16,
+                  color: Colors.green.shade700,
+                ),
                 Text(
-                  '\$${budget.toString()}',
+                  'PKR ${budget.toString()}',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -342,7 +385,6 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Change Status Button
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) {
@@ -355,22 +397,50 @@ class _ManageProjectsPageState extends State<ManageProjectsPage> {
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'active',
-                      child: Text('Mark as Active'),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 18,
+                            color: Colors.green,
+                          ),
+                          SizedBox(width: 8),
+                          Text('Mark as Active'),
+                        ],
+                      ),
                     ),
                     const PopupMenuItem(
                       value: 'completed',
-                      child: Text('Mark as Completed'),
+                      child: Row(
+                        children: [
+                          Icon(Icons.done_all, size: 18, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Mark as Completed'),
+                        ],
+                      ),
                     ),
                     const PopupMenuItem(
                       value: 'cancelled',
-                      child: Text('Mark as Cancelled'),
+                      child: Row(
+                        children: [
+                          Icon(Icons.cancel, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Mark as Cancelled'),
+                        ],
+                      ),
                     ),
                     const PopupMenuDivider(),
                     const PopupMenuItem(
                       value: 'delete',
-                      child: Text(
-                        'Delete Project',
-                        style: TextStyle(color: Colors.red),
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text(
+                            'Delete Project',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
                       ),
                     ),
                   ],
