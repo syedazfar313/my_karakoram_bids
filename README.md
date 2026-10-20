@@ -1,207 +1,248 @@
-
 <div align="center">
 
 # 🏗️ Karakoram Bids
 
-### Construction Project Management & Bidding Platform
+### Construction Project & Bidding Platform
 
-A Flutter-based mobile application designed to connect clients and contractors through a digital construction project and bidding platform.
+**Connecting clients and contractors through one mobile app.**
+
+Built with Flutter and Firebase as a Final Year Project at Karakoram International University.
 
 <br>
 
-<a href="https://github.com/syedazfar313/my_karakoram_bids">
-  <img src="https://img.shields.io/badge/GitHub-View_Repository-181717?style=for-the-badge&logo=github" alt="View GitHub Repository">
-</a>
-<img src="https://img.shields.io/badge/Flutter-Mobile_Development-02569B?style=for-the-badge&logo=flutter" alt="Flutter">
-<img src="https://img.shields.io/badge/Firebase-Cloud_Integration-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Provider](https://img.shields.io/badge/State-Provider-6C63FF?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-3DDC84?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Academic%20Project-blue?style=for-the-badge)
 
-<br><br>
+<br>
 
-**Final Year Project (FYP)**
-
-**Karakoram International University**
+[**About**](#-about-the-project) ·
+[**Features**](#-features) ·
+[**Architecture**](#-architecture) ·
+[**Getting Started**](#-getting-started) ·
+[**Team**](#-team)
 
 </div>
 
 ---
 
-## 📌 Table of Contents
+## 📖 Table of Contents
 
-- [Project Overview](#-project-overview)
-- [Academic Information](#-academic-information)
-- [Problem Statement](#-problem-statement)
-- [Project Objectives](#-project-objectives)
-- [Key Features](#-key-features)
-- [Technology Stack](#-technology-stack)
-- [Application Architecture](#-application-architecture)
-- [Installation and Setup](#-installation-and-setup)
-- [Firebase Configuration](#-firebase-configuration)
-- [Security Considerations](#-security-considerations)
-- [Future Enhancements](#-future-enhancements)
-- [Academic Significance](#-academic-significance)
-- [Author and Supervision](#-author-and-supervision)
+<details>
+<summary>Click to expand</summary>
+
+- [About the Project](#-about-the-project)
+- [Highlights](#-highlights)
+- [Screenshots](#-screenshots)
+- [Features](#-features)
+- [How It Works](#-how-it-works)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Firebase Setup](#-firebase-setup)
+- [Troubleshooting](#-troubleshooting)
+- [Security](#-security)
+- [Roadmap](#-roadmap)
+- [Team](#-team)
+- [Acknowledgements](#-acknowledgements)
+- [License](#-license)
+
+</details>
 
 ---
 
-## 📖 Project Overview
+## 📌 About the Project
 
-**Karakoram Bids** is a mobile application developed to support construction project posting and contractor bidding through a digital platform.
+Construction projects are often coordinated through scattered channels: word of mouth, phone calls, and informal messaging. This makes it hard for clients to find suitable contractors, and hard for contractors to discover work.
 
-The application aims to provide a structured environment where clients can publish construction projects and contractors can explore available opportunities and submit bids. It also incorporates user authentication, project-related data management, and communication functionality.
+**Karakoram Bids** brings this process into one mobile application. Clients publish construction projects, contractors browse them and submit bids, and administrators oversee users, projects, and bids. Authentication, cloud data storage, and in-app messaging are built on Firebase.
 
-The project applies mobile application development and cloud-based technologies to a practical problem in construction project coordination.
+| | |
+| --- | --- |
+| **Degree** | BS Computer Science |
+| **Institution** | Karakoram International University |
+| **Supervisor** | Mr. Sajid Hussain |
+| **Category** | Final Year Project (FYP) |
+| **Application type** | Cross-platform mobile application |
+| **Team size** | 2 members |
 
-## 🎓 Academic Information
+---
 
-<table>
-  <tr>
-    <th align="left">Academic Detail</th>
-    <th align="left">Information</th>
-  </tr>
-  <tr>
-    <td>Project Title</td>
-    <td>Karakoram Bids</td>
-  </tr>
-  <tr>
-    <td>Degree Program</td>
-    <td>BS Computer Science</td>
-  </tr>
-  <tr>
-    <td>Institution</td>
-    <td>Karakoram International University</td>
-  </tr>
-  <tr>
-    <td>Project Supervisor</td>
-    <td>Mr. Sajid Hussain</td>
-  </tr>
-  <tr>
-    <td>Project Category</td>
-    <td>Final Year Project (FYP)</td>
-  </tr>
-  <tr>
-    <td>Application Type</td>
-    <td>Cross-platform Mobile Application</td>
-  </tr>
-</table>
+## 🌟 Highlights
 
-## ❗ Problem Statement
+- 🔀 **Three user roles** with separate interfaces: Client, Contractor, and Administrator
+- ☁️ **Cloud-backed** with Firebase Authentication and Cloud Firestore
+- 💬 **Built-in messaging** between users
+- 🧱 **Layered architecture** separating UI, state, and data access
+- 🎨 **Centralized theme** and reusable widgets for a consistent interface
+- 📶 **Connectivity monitoring** for a smoother experience on unstable networks
 
-Traditional construction project coordination may involve fragmented communication, manual project sharing, and difficulty connecting clients with suitable contractors.
+---
 
-Karakoram Bids explores how a centralized digital platform can help organize construction project information and bidding activities. The objective is to improve accessibility, streamline project discovery, and provide a more structured interaction process between clients and contractors.
+## 📱 Screenshots
 
-## 🎯 Project Objectives
-
-- Develop a mobile platform for construction project coordination.
-- Enable clients to publish and manage construction projects.
-- Allow contractors to browse projects and submit bids.
-- Support user authentication and profile management.
-- Facilitate communication between platform users.
-- Apply software engineering principles to the development of a practical application.
-- Explore cloud-based data management through Firebase services.
-
-## ✨ Key Features
-
-### 👤 Client Module
-
-- User registration and login.
-- Construction project posting and management.
-- Access to project-related information.
-- Contractor discovery and profile viewing.
-- Communication functionality where implemented.
-
-### 👷 Contractor Module
-
-- Browse available construction projects.
-- View project details.
-- Submit and manage bids.
-- Access contractor profile functionality.
-- Review bidding activity where supported.
-
-### 🛡️ Administrator Module
-
-- Administrative interface.
-- User management.
-- Project management.
-- Bid management.
-
-### 🔐 Authentication and Account Management
-
-- Firebase-based authentication.
-- Login and registration interfaces.
-- Password recovery functionality.
-- Password change interface.
-- Form validation and error handling.
-
-### ☁️ Cloud and Application Services
-
-- Cloud Firestore integration.
-- Messaging functionality.
-- Profile image selection.
-- Network connectivity monitoring.
-- Reusable UI components.
-- Application theme and state management.
-
-*The listed features should be verified against the current implementation and Firebase configuration before being treated as fully functional.*
-
-## 🛠️ Technology Stack
+<!--
+Screenshots add karne ke baad is comment ko hata do.
+Images ko `docs/screenshots/` folder mein rakho (ya paths badal do).
 
 <table>
   <tr>
-    <th align="left">Technology</th>
-    <th align="left">Purpose</th>
+    <td align="center"><img src="docs/screenshots/login.png" width="200"><br><sub><b>Login</b></sub></td>
+    <td align="center"><img src="docs/screenshots/client_home.png" width="200"><br><sub><b>Client Dashboard</b></sub></td>
+    <td align="center"><img src="docs/screenshots/projects.png" width="200"><br><sub><b>Project Listings</b></sub></td>
+    <td align="center"><img src="docs/screenshots/bid.png" width="200"><br><sub><b>Submit Bid</b></sub></td>
   </tr>
   <tr>
-    <td>Flutter</td>
-    <td>Cross-platform mobile application development</td>
-  </tr>
-  <tr>
-    <td>Dart</td>
-    <td>Primary programming language</td>
-  </tr>
-  <tr>
-    <td>Firebase Authentication</td>
-    <td>User authentication</td>
-  </tr>
-  <tr>
-    <td>Cloud Firestore</td>
-    <td>Cloud data storage and messaging data</td>
-  </tr>
-  <tr>
-    <td>Provider</td>
-    <td>Application state management</td>
-  </tr>
-  <tr>
-    <td>Image Picker</td>
-    <td>Image selection functionality</td>
-  </tr>
-  <tr>
-    <td>Material Design</td>
-    <td>User interface components</td>
-  </tr>
-  <tr>
-    <td>Git and GitHub</td>
-    <td>Version control and source code hosting</td>
+    <td align="center"><img src="docs/screenshots/chat.png" width="200"><br><sub><b>Messaging</b></sub></td>
+    <td align="center"><img src="docs/screenshots/profile.png" width="200"><br><sub><b>Profile</b></sub></td>
+    <td align="center"><img src="docs/screenshots/admin.png" width="200"><br><sub><b>Admin Panel</b></sub></td>
+    <td align="center"><img src="docs/screenshots/contractor_home.png" width="200"><br><sub><b>Contractor Dashboard</b></sub></td>
   </tr>
 </table>
+-->
 
-## 🏛️ Application Architecture
+*Screenshots coming soon.*
 
-The project uses a modular source code structure to organize screens, data models, state management, services, and reusable components.
+<!--
+Agar APK ya demo video hai to yahan add karo:
 
-A representative structure is shown below:
+### 📥 Download
+[⬇️ Download APK](https://github.com/syedazfar313/my_karakoram_bids/releases)
+
+### 🎥 Demo
+[▶️ Watch the demo](YOUR_VIDEO_LINK)
+-->
+
+---
+
+## ✨ Features
+
+### 👤 Client
+- Register and sign in securely
+- Post and manage construction projects
+- Browse contractor profiles
+- Message contractors directly
+
+### 👷 Contractor
+- Browse available construction projects
+- View full project details
+- Submit and manage bids
+- Maintain a contractor profile
+
+### 🛡️ Administrator
+- Manage users
+- Manage projects
+- Manage bids
+
+### 🔧 Platform
+- Firebase Authentication with password recovery and password change
+- Cloud Firestore for data storage and messaging
+- Profile image selection
+- Network connectivity monitoring
+- Form validation and error handling throughout
+- Reusable UI components and a centralized app theme
+
+### 🔍 Roles at a Glance
+
+| Capability | Client | Contractor | Admin |
+| --- | :---: | :---: | :---: |
+| Register / sign in | ✅ | ✅ | ✅ |
+| Post projects | ✅ | | |
+| Browse projects | ✅ | ✅ | ✅ |
+| Submit bids | | ✅ | |
+| Messaging | ✅ | ✅ | |
+| Manage users, projects, bids | | | ✅ |
+
+---
+
+## 🔄 How It Works
+
+```mermaid
+sequenceDiagram
+    actor Client
+    actor Contractor
+    actor Admin
+    participant App as Karakoram Bids
+    participant DB as Firebase
+
+    Client->>App: Sign in and post a project
+    App->>DB: Store project
+    Contractor->>App: Browse available projects
+    App->>DB: Fetch projects
+    DB-->>Contractor: Project list
+    Contractor->>App: Submit a bid
+    App->>DB: Store bid
+    Client->>Contractor: Discuss through in-app messaging
+    Admin->>App: Oversee users, projects, and bids
+```
+
+---
+
+## 🏛️ Architecture
+
+The app follows a layered structure that separates UI, state, and data access. Screens never talk to Firebase directly. They go through providers and services, which keeps the UI easy to change and the logic easy to test.
+
+```mermaid
+flowchart TD
+    A[Screens and Widgets] --> B[Providers - State Management]
+    B --> C[Services Layer]
+    C --> D[(Firebase Authentication)]
+    C --> E[(Cloud Firestore)]
+    B --> F[Models]
+    C --> F
+```
+
+| Layer | Responsibility |
+| --- | --- |
+| **Presentation** | Screens and reusable widgets, grouped by user role |
+| **State** | `Provider` for app and session state |
+| **Services** | Authentication, messaging, connectivity |
+| **Models** | Typed data classes for application entities |
+| **Core** | Theme, utilities, shared widgets |
+
+### Core Entities
+
+| Entity | Description |
+| --- | --- |
+| **User** | Account and profile for clients, contractors, and admins |
+| **Project** | A construction project posted by a client |
+| **Bid** | A contractor's offer on a project |
+| **Message** | Conversation data between users |
+
+---
+
+## 🧰 Tech Stack
+
+| Technology | Purpose |
+| --- | --- |
+| **Flutter** | Cross-platform UI framework |
+| **Dart** | Programming language |
+| **Firebase Authentication** | User sign-in and account management |
+| **Cloud Firestore** | NoSQL cloud database |
+| **Provider** | State management |
+| **Image Picker** | Profile image selection |
+| **Material Design** | UI components |
+| **Git and GitHub** | Version control |
+
+---
+
+## 🗂️ Project Structure
 
 ```text
 my_karakoram_bids/
 ├── lib/
 │   ├── core/
-│   │   ├── services/
-│   │   ├── theme/
-│   │   ├── utils/
-│   │   └── widgets/
-│   ├── models/
-│   ├── providers/
-│   ├── routes/
+│   │   ├── services/       # Auth, messaging, connectivity
+│   │   ├── theme/          # App theme and styling
+│   │   ├── utils/          # Helpers and validators
+│   │   └── widgets/        # Shared UI components
+│   ├── models/             # Data models
+│   ├── providers/          # State management
+│   ├── routes/             # Navigation
 │   ├── screens/
 │   │   ├── admin/
 │   │   ├── auth/
@@ -216,176 +257,150 @@ my_karakoram_bids/
 └── README.md
 ```
 
-*The directory listing is illustrative; adjust it to match the actual repository.*
+---
 
-### Architecture Components
-
-- **Presentation Layer:** Screens and widgets for user interaction.
-- **State Management:** Provider-based state handling where used.
-- **Data Models:** Structures representing application entities.
-- **Service Layer:** Messaging, connectivity, and other application services.
-- **Cloud Services:** Firebase authentication and Firestore integration.
-- **Reusable Components:** Shared widgets, theme definitions, and utilities.
-
-## ⚙️ Installation and Setup
+## 🚀 Getting Started
 
 ### Prerequisites
 
-Before running the application, install:
+- [Flutter SDK](https://docs.flutter.dev/get-started/install)
+- Android Studio or VS Code with the Flutter extension
+- An Android emulator or a physical device
+- A Firebase project (see [Firebase Setup](#-firebase-setup))
 
-- Flutter SDK
-- Compatible Dart SDK
-- Android Studio or Visual Studio Code
-- Android emulator or compatible physical device
-- Firebase project configuration
-
-### 1. Clone the Repository
+### Installation
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/syedazfar313/my_karakoram_bids.git
-```
 
-### 2. Navigate to the Project
-
-```bash
+# 2. Move into the project
 cd my_karakoram_bids
-```
 
-### 3. Install Dependencies
-
-```bash
+# 3. Install dependencies
 flutter pub get
-```
 
-### 4. Check Flutter Environment
-
-```bash
+# 4. Verify your environment
 flutter doctor
-```
 
-### 5. Configure Firebase
-
-Configure the application with your Firebase project and the required platform-specific settings.
-
-See the official FlutterFire documentation:
-
-https://firebase.google.com/docs/flutter/setup
-
-### 6. Run the Application
-
-```bash
+# 5. Run the app
 flutter run
 ```
 
-### 7. Analyze the Source Code
+### Useful Commands
 
 ```bash
-flutter analyze
+flutter analyze        # Static analysis
+flutter test           # Run tests
+flutter clean          # Clear build cache
+flutter build apk      # Build a release APK
 ```
 
-### 8. Run Automated Tests
+---
 
-```bash
-flutter test
-```
+## 🔥 Firebase Setup
 
-*Successful execution depends on the installed Flutter environment, required configuration, and availability of the project's dependencies.*
+The app needs its own Firebase project. Firebase configuration files are not meant to be shared publicly, so set up your own:
 
-## 🔥 Firebase Configuration
+1. Create a project in the [Firebase Console](https://console.firebase.google.com/).
+2. Register your Android and/or iOS app.
+3. Run `flutterfire configure` to generate the configuration.
+4. Enable **Email/Password** sign-in under Authentication.
+5. Create a **Cloud Firestore** database.
+6. Apply Firestore security rules before using the app with real data.
 
-The application uses Firebase services for supported authentication and cloud functionality.
+Reference documentation:
+[FlutterFire](https://firebase.google.com/docs/flutter/setup) ·
+[Authentication](https://firebase.google.com/docs/auth) ·
+[Cloud Firestore](https://firebase.google.com/docs/firestore)
 
-Before running the project in a new environment:
+---
 
-1. Create or select a Firebase project.
-2. Register the required application platforms.
-3. Configure FlutterFire for the project.
-4. Enable Firebase Authentication methods used by the application.
-5. Configure Cloud Firestore.
-6. Apply appropriate database security rules.
-7. Verify the application using the intended test accounts and workflows.
+## 🩺 Troubleshooting
 
-Official documentation:
+| Problem | Fix |
+| --- | --- |
+| `flutter doctor` shows issues | Follow its suggestions, then run it again |
+| Dependency errors after pulling changes | Run `flutter clean` then `flutter pub get` |
+| Firebase initialization error | Make sure `flutterfire configure` was run for your project |
+| Sign-in fails | Check that Email/Password is enabled in Firebase Authentication |
+| Data not loading | Check your Firestore rules and your internet connection |
 
-- FlutterFire: https://firebase.google.com/docs/flutter/setup
-- Firebase Authentication: https://firebase.google.com/docs/auth
-- Cloud Firestore: https://firebase.google.com/docs/firestore
+---
 
-## 🔒 Security Considerations
+## 🔒 Security
 
-Security is an important consideration for applications handling user accounts, project information, and bidding data.
+- Role-based access is enforced through Firebase security rules.
+- User input is validated before it is stored.
+- API keys, service-account files, and credentials must never be committed to the repository.
+- Authentication and authorization should be tested for every user role before release.
 
-- Enforce access control through Firebase security rules.
-- Restrict users to authorized operations according to their roles.
-- Validate input before processing or storing data.
-- Avoid publishing private keys, passwords, and service-account credentials.
-- Review Firebase configuration and public repository contents before release.
-- Test authentication and authorization behavior for different user roles.
+---
 
-## 🚀 Future Enhancements
+## 🗺️ Roadmap
 
-Potential future improvements include:
+- [ ] Push notifications for bid and project updates
+- [ ] Advanced search and filtering
+- [ ] Contractor ratings and reviews
+- [ ] Project progress tracking
+- [ ] Reporting and analytics for administrators
+- [ ] Wider automated test coverage
+- [ ] Accessibility improvements
+- [ ] Performance optimization
 
-- Push notifications for bid and project updates.
-- Advanced project search and filtering.
-- Contractor ratings and reviews.
-- Project progress tracking.
-- Improved reporting and analytics.
-- Enhanced accessibility and user experience.
-- Expanded automated testing.
-- Further improvements to security and performance.
+---
 
-These are proposed enhancements and are not claims about existing functionality.
+## 👥 Team
 
-## 🎓 Academic Significance
-
-Karakoram Bids demonstrates the practical application of software engineering concepts in a construction-sector use case.
-
-The project provides experience in cross-platform mobile development, cloud service integration, application state management, modular software architecture, user authentication, and role-oriented workflows.
-
-It also provides a foundation for further exploration of mobile computing, cloud-based systems, software architecture, and digital project coordination.
-
-## 👨‍💻 Author and Supervision
+This project was built by a two-member team.
 
 <table>
   <tr>
-    <td><strong>Project</strong></td>
-    <td>Karakoram Bids</td>
-  </tr>
-  <tr>
-    <td><strong>Degree Program</strong></td>
-    <td>BS Computer Science</td>
-  </tr>
-  <tr>
-    <td><strong>University</strong></td>
-    <td>Karakoram International University</td>
-  </tr>
-  <tr>
-    <td><strong>Supervisor</strong></td>
-    <td>Mr. Sajid Hussain</td>
-  </tr>
-  <tr>
-    <td><strong>GitHub Repository</strong></td>
-    <td>
-      <a href="https://github.com/syedazfar313/my_karakoram_bids">
-        syedazfar313/my_karakoram_bids
-      </a>
+    <td align="center" width="50%">
+      <a href="https://github.com/syedazfar313">
+        <img src="https://github.com/syedazfar313.png" width="100" alt="Syed Azfar Abbas"><br>
+        <b>Syed Azfar Abbas</b>
+      </a><br>
+      <sub>👑 Team Leader</sub><br><br>
+      Backend development<br>
+      Database design and integration<br>
+      FYP report<br>
+      Final presentation
+    </td>
+    <td align="center" width="50%">
+      <a href="https://github.com/syedmahnoor026">
+        <img src="https://github.com/syedmahnoor026.png" width="100" alt="Mahnoor Syed"><br>
+        <b>Mahnoor Syed</b>
+      </a><br>
+      <sub>👩‍💻 Team Member</sub><br><br>
+      Project proposal<br>
+      UX/UI design<br>
+      Frontend development
     </td>
   </tr>
 </table>
 
+---
+
+## 🙏 Acknowledgements
+
+Thanks to our supervisor, **Mr. Sajid Hussain**, for his guidance throughout the project, and to the faculty of the Department of Computer Science at **Karakoram International University**.
+
+---
+
 ## 📄 License
 
-This project was developed for academic purposes as a Final Year Project.
-
-A formal open-source license should be added if permission is granted for public reuse and redistribution.
+This project was developed for academic purposes as a Final Year Project. All rights are reserved by the authors unless a license is added to this repository.
 
 ---
 
 <div align="center">
 
-**Karakoram Bids**
+**Karakoram Bids**<br>
+<sub>Built by Syed Azfar Abbas and Mahnoor Syed · Karakoram International University</sub>
 
-*An academic software engineering project at Karakoram International University.*
+<br>
+
+⭐ If you found this project interesting, consider giving it a star.
 
 </div>
